@@ -1,0 +1,79 @@
+# Inserts a blank line between shell prompts
+add_newline = true
+# format = "$all"
+
+# Replace the "❯" symbol in the prompt with "➜"
+[character]                            # The name of the module we are configuring is "character"
+#success_symbol = "[➜](bold green)"     # The "success_symbol" segment is being set to "➜" with the color "bold green"
+
+# Disable the package module, hiding it from the prompt completely
+[package]
+disabled = true
+
+[cmd_duration]
+min_time = 500
+format = "| [$duration](bold yellow)"
+
+[line_break]
+disabled = true
+
+[battery]
+full_symbol = "🔋 "
+charging_symbol = "⚡️ "
+discharging_symbol = "💀 "
+
+[[battery.display]]  # "bold red" style and discharging_symbol when capacity is between 0% and 10%
+threshold = 10
+style = "bold red"
+
+[[battery.display]]  # "bold yellow" style and 💦 symbol when capacity is between 10% and 30%
+threshold = 30
+style = "bold yellow"
+discharging_symbol = "💦 "
+
+[gcloud]
+disabled = true
+
+[git_branch]
+symbol = " "
+format = "| [$symbol$branch]($style) "
+style = "bold grey"
+truncation_length = 25
+truncation_symbol = ""
+
+[aws]
+format = '| [$symbol($profile )({$region} $duration )]($style) '
+# format = "on [$symbol$region]($style) "
+style = "bold yellow"
+symbol = "AWS ➜ "
+
+[aws.region_aliases]
+us-east-1 = "ue1"
+us-east-2 = "ue2"
+eu-central-1 = "ec1"
+cn-north-1 = "cn1"
+cn-northwest-1 = "cnw1"
+
+[docker_context]
+symbol = "DCR ➜ "
+format = "| [$symbol $context](blue bold)"
+
+[terraform]
+symbol = "TF ➜ "
+style = "bold 105"
+format = "| [$symbol($version) {$workspace}]($style) "
+
+[python]
+symbol = "PY ➜ "
+style = "bold blue"
+pyenv_version_name = false
+python_binary = ["python3"]
+format = '| [${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
+
+[kubernetes]
+symbol = "K8S ➜ "
+style = "dimmed green"
+format = '| [$symbol $context \($namespace\)]($style) '
+disabled = true
+[kubernetes.context_aliases]
+"dev.local.cluster.k8s" = "dev"
