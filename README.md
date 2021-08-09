@@ -5,3 +5,4 @@
 - Git
 - zsh shell
 - starship prompt
+- terraform
