@@ -1,0 +1,12 @@
+# lazygit — delta pager (autoswitches with the terminal), nerd fonts, nvim as editor.
+gui:
+  nerdFontsVersion: "3"
+  showFileTree: true
+  showRandomTip: false
+git:
+  pagers:
+    - colorArg: always
+      pager: delta --paging=never
+  parseEmoji: true
+os:
+  editPreset: nvim

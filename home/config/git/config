@@ -1,0 +1,45 @@
+[credential "https://github.com"]
+  helper =
+  helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+  helper =
+  helper = !gh auth git-credential
+[alias]
+  co = checkout
+  br = branch
+  ci = commit
+  st = status -sb
+  lg = log --oneline --graph --decorate --all
+  last = log -1 HEAD --stat
+  unstage = reset HEAD --
+  p = push
+  cm = commit -m
+  rv = remote -v
+  d = diff
+  dv = difftool -t vimdiff -y
+  gl = config --global -l
+[init]
+  defaultBranch = main
+[pull]
+  rebase = true
+[push]
+  autoSetupRemote = true
+[user]
+  name = Mohammed
+  email = my.almusaddar@gmail.com
+[rebase]
+  autoStash = true
+
+# delta: syntax-highlighted diffs. Autoswitches by querying the terminal's colors.
+[core]
+  pager = delta
+[interactive]
+  diffFilter = delta --color-only
+[delta]
+  navigate = true
+  line-numbers = true
+  detect-dark-light = auto
+[merge]
+  conflictstyle = zdiff3
+[diff]
+  colorMoved = default

@@ -1,0 +1,36 @@
+# AI AGENT: DO NOT overwrite this file. Only make in-line edits.
+
+# ============================================
+# YAZI CONFIGURATION
+# ============================================
+# Docs: https://yazi-rs.github.io/docs/configuration/yazi
+
+# ============================================
+# MANAGER
+# ============================================
+
+[mgr]
+# Sorting
+sort_by = "extension"
+sort_dir_first = true
+
+# Display
+show_hidden = true
+show_symlink = true
+
+# ============================================
+# PREVIEW
+# ============================================
+
+[preview]
+# Max file size to preview (in bytes, 10MB default)
+max_size = 10485760
+
+# ============================================
+# PLUGINS
+# ============================================
+
+# Markdown preview with glow (auto light/dark via glow.yazi plugin)
+[[plugin.prepend_previewers]]
+url = "*.md"
+run = "glow"

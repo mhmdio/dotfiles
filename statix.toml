@@ -1,0 +1,4 @@
+# statix lint config (used by `nix flake check`).
+# Allow repeated top-level keys (`programs.x = …`, `home.y = …`): that's
+# idiomatic home-manager and reads better than one giant nested attrset.
+disabled = ["repeated_keys"]

@@ -1,0 +1,45 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors
+*~
+*.swp
+*.swo
+*.swn
+.idea/
+*.sublime-workspace
+
+# Environment
+.env
+.env.local
+.env*.local
+.envrc
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Go
+vendor/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Misc
+*.log
+.cache/
+
+**/.claude/settings.local.json

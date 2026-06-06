@@ -1,0 +1,11 @@
+# AI AGENT: DO NOT overwrite this file. Only make in-line edits.
+
+# ============================================
+# THEME / FLAVOR
+# ============================================
+# Yazi auto-switches between light/dark based on terminal color mode.
+# Flavors located in ~/.config/yazi/flavors/
+
+[flavor]
+dark = "catppuccin-mocha"
+light = "catppuccin-latte"

@@ -1,0 +1,25 @@
+# fzf default options — loaded via $FZF_DEFAULT_OPTS_FILE (fzf ≥ 0.47; comments ≥ 0.55).
+# Editing this file affects new fzf runs immediately — no shell reload needed.
+# Precedence (low → high): this file → $FZF_DEFAULT_OPTS → command-line flags.
+
+# layout & behaviour
+--height=80%
+--layout=reverse
+--border=rounded
+--info=inline-right
+--cycle
+--scroll-off=3
+--highlight-line
+
+# prompt glyphs (quoted to preserve the spaces)
+--prompt='  '
+--pointer='▶'
+--marker='✓ '
+
+# colors follow the terminal's 16-color palette → dark/light adaptive
+--color=16
+
+# keybinds
+--bind='ctrl-/:toggle-preview'
+--bind='alt-up:preview-page-up,alt-down:preview-page-down'
+--bind='ctrl-y:execute-silent(printf %s {} | pbcopy)+abort'

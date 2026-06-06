@@ -1,0 +1,29 @@
+[[plugin.deps]]
+use = "Lil-Dank/lazygit"
+rev = "e73fd74"
+hash = "6ea5f37c7f219671ec504cb8311f889d"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:piper"
+rev = "598cdb6"
+hash = "d99cfbc3812e7738505f9e4bedb759cd"
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:full-border"
+rev = "598cdb6"
+hash = "7b625412411be411153886894d9acaf"
+
+[[plugin.deps]]
+use = "Reledia/glow"
+rev = "bd3eaa5"
+hash = "92b5c58159a51c567f82b618cee2b78"
+
+[[flavor.deps]]
+use = "yazi-rs/flavors:catppuccin-mocha"
+rev = "0f9204b"
+hash = "7dfe41c9c3d9be76da8a844263d0bbed"
+
+[[flavor.deps]]
+use = "yazi-rs/flavors:catppuccin-latte"
+rev = "0f9204b"
+hash = "b8f46853c27707115f25f3423a47bd38"
