@@ -425,6 +425,66 @@ tools follow live, GUI apps on relaunch. No rebuild needed.
 </details>
 
 <details>
+<summary><h2>⌨️ Keyboard shortcuts</h2></summary>
+
+Two modifier **foundations**, set in Karabiner (`home/config/karabiner/karabiner.json`) on the Logitech MX Keys Mini — everything builds on these:
+
+| Foundation | Keys | Role |
+|---|---|---|
+| **Hyper** | Right Option → `⌃⌥⇧⌘` | Global namespace — app launch + window/space actions (bound in Raycast's GUI). No app uses all four mods, so nothing collides. |
+| **Caps → Ctrl** | hold `Caps` = `Ctrl`, double-tap = `Esc` | The comfortable Ctrl for the terminal/editor (tmux, nvim, zsh vi-mode). |
+
+### WezTerm — leader `Ctrl+Alt+a` (= Caps+Opt+a)
+
+| Keys | Action |
+|---|---|
+| `⌘⌥ P` | command palette (Leader `?` aliases it) |
+| Leader `-` / `\|` | split down / right |
+| Leader `h j k l` · Leader `⇧ hjkl` | focus pane · resize pane |
+| Leader `r` | resize mode (then `hjkl`, `Esc`) |
+| Leader `Space` · `f` · `=` · `o` · `q` | pane picker · zoom · swap · rotate · close |
+| Leader `t` · `[` `]` · `1`–`9` · `Tab` | new tab · prev/next · jump N · last |
+| Leader `w` · `{` `}` · `$` | workspace switcher · prev/next · rename |
+| Leader `Enter` / `s` · `y` / `v` · `/` | copy-mode / quick-select · copy / paste · search |
+| Leader `m` · `⇧ f` · `⇧ r` | launcher (btop/yazi/lazygit) · fullscreen · reload |
+
+Source: `home/config/wezterm/wezterm.lua`.
+
+### tmux — prefix `Ctrl+b`
+
+| Keys | Action |
+|---|---|
+| Prefix `\|` / `-` | split horizontal / vertical (keep path) |
+| Prefix `h j k l` · Prefix `⇧ HJKL` | select pane · resize |
+| Prefix `r` | reload config |
+| copy-mode `v` / `y` | begin selection / copy (vi) |
+
+Source: `home/config/tmux/tmux.conf`.
+
+### Neovim — leader `Space`
+
+Stock **LazyVim** keymaps (no repo overrides); `Space` opens which-key. See the [LazyVim keymaps](https://www.lazyvim.org/keymaps).
+
+### Yazi & Lazygit
+
+- **Yazi**: `g i` → lazygit; otherwise stock vi-style nav. (`home/config/yazi/keymap.toml`)
+- **Lazygit**: stock defaults. (`home/config/lazygit/config.yml`)
+
+### Shell — zsh vi-mode + fzf
+
+| Keys | Action |
+|---|---|
+| `Ctrl+R` | fuzzy history (fzf); `Ctrl+Y` copies the match |
+| `Ctrl+T` · `Alt+C` | insert file/dir path · cd into a dir |
+| `Tab` | fzf-tab completion (with previews) |
+| `Esc` (or double-tap Caps) · `v` | vi normal mode · edit command in `$EDITOR` |
+| `Ctrl+A/E` · `Ctrl+K/U/W` · `Ctrl+Y` | line start/end · kill line/line-back/word · yank |
+
+Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd · `v`/`n` nvim · `lg` lazygit · `g` + git shorthands. Source: `home/config/shell/*.zsh`.
+
+</details>
+
+<details>
 <summary><h2>Notes</h2></summary>
 
 - **nixpkgs-unstable** across nixpkgs / nix-darwin / home-manager (latest tool versions).

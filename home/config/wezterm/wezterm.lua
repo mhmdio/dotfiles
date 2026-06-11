@@ -166,9 +166,9 @@ wezterm.on("window-config-reloaded", function(window, _)
 	end
 end)
 
--- ── Leader key (Meh+a prefix) ─────────────────────────────────
+-- ── Leader key ─────────────────────────────────
 local act = wezterm.action
--- Left Control is remapped via Karabiner to send Ctrl+Opt, so Meh+a = Ctrl+Alt+a
+-- Leader = Ctrl+Alt+a. With Caps Lock → Ctrl (Karabiner), it's pressed Caps+Opt+a.
 config.leader = { key = "a", mods = "CTRL|ALT", timeout_milliseconds = 1500 }
 
 config.keys = {
@@ -243,8 +243,9 @@ config.keys = {
 	-- Window fullscreen
 	{ key = "f", mods = "LEADER|SHIFT", action = act.ToggleFullScreen },
 
-	-- Command palette (Shift+p or ? — vim convention for help)
-	{ key = "p", mods = "LEADER|SHIFT", action = act.ActivateCommandPalette },
+	-- Command palette: ⌘⌥P (the common modifier+P convention). Leader+? kept as the
+	-- in-terminal help-style alias.
+	{ key = "p", mods = "CMD|ALT", action = act.ActivateCommandPalette },
 	{ key = "?", mods = "LEADER|SHIFT", action = act.ActivateCommandPalette },
 
 	-- Copy mode / quick select

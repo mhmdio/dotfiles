@@ -58,7 +58,7 @@ banner
 
 # Flakes only see git-tracked files; stage so edits aren't silently skipped.
 if [ -d .git ]; then
-  info "staging tracked changes for the flake…"
+  info "staging all changes (incl. new files) for the flake…"
   git add -A 2>/dev/null || true
 fi
 

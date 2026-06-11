@@ -39,6 +39,10 @@
     nix-direnv.enable = true;
   };
 
+  # Quiet direnv's per-load "loading…" / "export +VAR…" status lines. Empty format
+  # disables direnv's own logging; the devenv enterShell banner still prints.
+  home.sessionVariables.DIRENV_LOG_FORMAT = "";
+
   # home-manager owns .zshrc/.zshenv; we export plugin store paths and source the
   # hand-written shell tree (config/shell) in its exact load order.
   programs.zsh = {

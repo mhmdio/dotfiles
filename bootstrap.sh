@@ -15,6 +15,9 @@ set -euo pipefail
 REPO_URL="${DOTFILES_REPO_URL:-https://github.com/mhmdio/dotfiles}"
 REPO_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
 DOTFILES_USER="${DOTFILES_USER:-$USER}"
+# Bootstrap DRIVER frontends that run the first switch — pinned to a stable release
+# for a dependable first run. The flake's own inputs (nixpkgs/nix-darwin/home-manager
+# on master) build the actual config, so this 25.11-vs-unstable skew is intentional.
 DARWIN_REF="github:nix-darwin/nix-darwin/nix-darwin-25.11"
 HM_REF="github:nix-community/home-manager/release-25.11"
 
@@ -70,6 +73,23 @@ if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
   set -u
 fi
 
+# --- Trusted Nix user (devenv requires it) ----------------------------------
+# devenv passes restricted settings (system, http-connections, …) when it builds
+# a shell; a non-trusted user gets them rejected and the shell fails to evaluate.
+# Lix trusts only root by default, so enrol the build account (root already is).
+if [ "$DOTFILES_USER" != root ] \
+  && ! nix config show trusted-users 2>/dev/null | tr ' ' '\n' | grep -qx "$DOTFILES_USER"; then
+  step "Nix trusted-user"
+  info "adding $DOTFILES_USER to trusted-users (sudo) so devenv shells evaluate…"
+  echo "extra-trusted-users = $DOTFILES_USER" | sudo tee -a /etc/nix/nix.conf >/dev/null
+  if [ "$OS" = "Darwin" ]; then
+    sudo launchctl kickstart -k system/org.nixos.nix-daemon
+  else
+    sudo systemctl restart nix-daemon 2>/dev/null || true
+  fi
+  ok "trusted-users → root $DOTFILES_USER"
+fi
+
 # --- Layer 1a (macOS only): Homebrew (GUI casks; nix-darwin drives bundle) ---
 if [ "$OS" = "Darwin" ]; then
   step "Homebrew (GUI casks)"
@@ -91,8 +111,20 @@ if [ ! -d "$REPO_DIR/.git" ]; then
   git clone --quiet "$REPO_URL" "$REPO_DIR"
   ok "cloned → $REPO_DIR"
 else
-  # Reset (not pull): single force-pushed commit means histories diverge.
+  # Reset (not pull): single force-pushed commit means histories diverge. Guard
+  # first — bail rather than discard local work (tracked edits beyond the auto-
+  # stamped username.nix, or local commits ahead of origin). Override: set
+  # DOTFILES_FORCE_RESET=1.
   git -C "$REPO_DIR" fetch --quiet origin
+  dirty="$(git -C "$REPO_DIR" status --porcelain --untracked-files=no | grep -v 'username\.nix' || true)"
+  ahead="$(git -C "$REPO_DIR" rev-list --count origin/main..HEAD 2>/dev/null || echo 0)"
+  if [ -z "${DOTFILES_FORCE_RESET:-}" ] && { [ -n "$dirty" ] || [ "$ahead" != 0 ]; }; then
+    warn "local work in $REPO_DIR would be lost by 'git reset --hard origin/main':"
+    [ -n "$dirty" ] && printf '%s\n' "$dirty" >&2
+    [ "$ahead" != 0 ] && warn "  ($ahead local commit(s) ahead of origin)"
+    warn "commit/stash/push them, or re-run with DOTFILES_FORCE_RESET=1 to override."
+    exit 1
+  fi
   git -C "$REPO_DIR" reset --hard --quiet origin/main
   ok "refreshed $REPO_DIR to origin"
 fi
