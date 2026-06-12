@@ -101,16 +101,19 @@
   };
 
   # Homebrew = GUI .app casks only; every CLI comes from nixpkgs. nix-darwin drives
-  # `brew bundle`; cleanup="zap" prunes any cask not in this list (declarative), and
-  # each `nix run .#mac` refreshes + upgrades casks. Heads-up: a cask you installed by
-  # hand and didn't add here will be removed on the next switch.
+  # `brew bundle`; the zap-prune below removes any cask not in this list (declarative),
+  # and each `nix run .#mac` refreshes + upgrades casks. Heads-up: a cask you installed
+  # by hand and didn't add here will be removed on the next switch.
   homebrew = {
     enable = true;
     onActivation = {
-      cleanup = "zap";
+      # cleanup="zap" would emit brew's deprecated `--cleanup` switch (Homebrew 6.x).
+      # Reproduce the same forced zap-prune with brew's current flags via extraFlags:
+      # --force-cleanup performs+forces the prune, --zap also clears each cask's data.
+      cleanup = "none";
       autoUpdate = true;
       upgrade = true;
-      extraFlags = [ "--force-cleanup" ]; # newer brew requires it for --cleanup
+      extraFlags = [ "--zap" "--force-cleanup" ];
     };
 
     casks = [

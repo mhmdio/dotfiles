@@ -492,8 +492,8 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd 
 - **`allowUnfree = true`** — for the 1Password CLI, etc.
 - **Scope = your daily tools only.** Per-client CLIs are out of scope by design —
   they belong in [devenv.sh](https://devenv.sh) shells, not here.
-- **Homebrew casks are declarative** (`cleanup = "zap"`) — a cask installed by hand
-  but not added to `hosts/mac.nix` is removed on the next `nix run .#mac`.
+- **Homebrew casks are declarative** (zap-prune on activation) — a cask installed by
+  hand but not added to `hosts/mac.nix` is removed on the next `nix run .#mac`.
 - **Wallpaper** — first `nix run .#mac` may prompt to allow controlling System Events
   (so it can set the desktop picture); approve once.
 
