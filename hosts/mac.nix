@@ -34,9 +34,9 @@
       tilesize = 48;
       persistent-apps = [
         # pinned dock apps, left → right
-        "/System/Applications/Mail.app"
-        "/System/Applications/Calendar.app"
+        "/Applications/Obsidian.app"
         "/Users/${username}/Applications/Home Manager Apps/WezTerm.app"
+        "/System/Applications/Mail.app"
         "/Users/${username}/Applications/Home Manager Apps/Zed.app"
         "/Applications/Google Chrome.app"
         "/Applications/Slack.app"
