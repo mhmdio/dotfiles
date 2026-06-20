@@ -1,11 +1,11 @@
 # AI coding tools — `ai` command.
-#   ai up   update installed AI CLIs (skips any that aren't installed)
+#   ai up   update installed AI CLIs (skips ones not installed or Nix-managed)
 # Order is deliberate: Claude Code first, then OpenCode, then the rest.
 # Requires gum (https://charm.land/libs/).
 #
 # ─── Tools (edit/add lines in _ai_upgrade to change the set or order) ────────
 # Claude Code .. https://code.claude.com/docs   (`claude update`)
-# OpenCode ..... https://opencode.ai             (`opencode upgrade`)
+# OpenCode ..... https://opencode.ai             (Nix-managed → make update)
 # Codex ........ https://github.com/openai/codex (`npm update -g @openai/codex`)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -18,16 +18,26 @@ Commands:
 EOF
 }
 
-# Upgrade one tool if its binary is present, otherwise skip with a note.
+# Upgrade one tool via its self-updater. Skips when the binary is missing, or
+# when Nix owns it: a /nix/store binary is read-only, so its self-updater can't
+# replace itself and just stalls — Nix tools upgrade with `make update && make apply`.
 #   $1 = display name   $2 = binary to check   $3.. = upgrade command
 _ai_upgrade_one() {
   local name="$1" bin="$2"; shift 2
-  if command -v "$bin" &>/dev/null; then
-    gum spin --spinner dot --title "Upgrading ${name}..." -- "$@"
-    gum style --faint "   ✅ ${name} done"
-  else
+  # NB: not `path` — in zsh that's the special array tied to $PATH, and a `local
+  # path` would blank PATH inside this function.
+  local binpath; binpath="$(command -v "$bin" 2>/dev/null)"
+  if [ -z "$binpath" ]; then
     gum style --faint "   ⊘ ${name} not installed — skipped"
+    return
   fi
+  case "$(readlink -f "$binpath")" in
+    /nix/store/*)
+      gum style --faint "   ⊘ ${name} is Nix-managed — skip (make update && make apply)"
+      return ;;
+  esac
+  gum spin --spinner dot --title "Upgrading ${name}..." -- "$@"
+  gum style --faint "   ✅ ${name} done"
 }
 
 _ai_upgrade() {
