@@ -80,6 +80,24 @@ in
         touch "$out"
       '';
 
+  # `nix flake check`: every .nix file is nixfmt-clean. Cheap (no system build), so
+  # together with lint it's the whole of what CI runs — the .darwin/.home build
+  # checks stay local-only.
+  fmtCheckFor =
+    { system, src }:
+    let
+      pkgs = nixpkgs.legacyPackages.${system};
+    in
+    pkgs.runCommandLocal "dotfiles-fmt-check"
+      {
+        nativeBuildInputs = [ pkgs.nixfmt ];
+      }
+      ''
+        cd ${src}
+        nixfmt --check $(find . -name '*.nix' -type f)
+        touch "$out"
+      '';
+
   # `nix fmt`: run nixfmt over every .nix file (no extra flake input).
   fmtFor =
     system:
@@ -89,7 +107,7 @@ in
     pkgs.writeShellApplication {
       name = "fmt";
       runtimeInputs = [
-        pkgs.nixfmt-rfc-style
+        pkgs.nixfmt
         pkgs.findutils
       ];
       text = ''

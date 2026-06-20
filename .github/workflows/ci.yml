@@ -1,0 +1,27 @@
+name: ci
+
+# Lint + format only — fast, no system build. The full mac/linux config builds
+# (checks.*.darwin / .home) are deliberately left to local `make check`; building
+# a whole nix-darwin system in CI is overkill for now.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Newer push to the same ref cancels an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: lint · fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: lint  ·  deadnix · statix · shellcheck
+        run: nix build -L --no-link .#checks.x86_64-linux.lint
+      - name: fmt   ·  nixfmt --check
+        run: nix build -L --no-link .#checks.x86_64-linux.fmt

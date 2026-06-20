@@ -56,9 +56,15 @@
       };
     in
     {
-      # `nix flake check`: lint + a real build of each config.
+      # `nix flake check`: lint + fmt + a real build of each config. CI runs only the
+      # cheap lint/fmt checks (see .github/workflows/ci.yml); the system builds
+      # (.darwin / .home) stay local — `make check`.
       checks.${darwinSystem} = {
         lint = lib.lintFor {
+          system = darwinSystem;
+          src = ./.;
+        };
+        fmt = lib.fmtCheckFor {
           system = darwinSystem;
           src = ./.;
         };
@@ -66,6 +72,10 @@
       };
       checks.${linuxSystem} = {
         lint = lib.lintFor {
+          system = linuxSystem;
+          src = ./.;
+        };
+        fmt = lib.fmtCheckFor {
           system = linuxSystem;
           src = ./.;
         };
