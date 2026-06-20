@@ -101,9 +101,10 @@
   };
 
   # Homebrew = GUI .app casks only; every CLI comes from nixpkgs. nix-darwin drives
-  # `brew bundle`; the zap-prune below removes any cask not in this list (declarative),
-  # and each `nix run .#mac` refreshes + upgrades casks. Heads-up: a cask you installed
-  # by hand and didn't add here will be removed on the next switch.
+  # `brew bundle`; the zap-prune below removes any cask not in this list (declarative).
+  # Casks are NOT auto-upgraded on switch (see onActivation) — bump them on purpose
+  # with `brew upgrade --cask`. Heads-up: a cask you installed by hand and didn't add
+  # here will be removed on the next switch.
   homebrew = {
     enable = true;
     onActivation = {
@@ -111,9 +112,15 @@
       # Reproduce the same forced zap-prune with brew's current flags via extraFlags:
       # --force-cleanup performs+forces the prune, --zap also clears each cask's data.
       cleanup = "none";
-      autoUpdate = true;
-      upgrade = true;
-      extraFlags = [ "--zap" "--force-cleanup" ];
+      # Both default false for idempotency — leave them off so a switch never refreshes
+      # brew or upgrades casks behind your back (an unasked-for upgrade once broke a
+      # mid-activation docker-desktop bump). Refresh casks deliberately, not on switch.
+      autoUpdate = false;
+      upgrade = false;
+      extraFlags = [
+        "--zap"
+        "--force-cleanup"
+      ];
     };
 
     casks = [
