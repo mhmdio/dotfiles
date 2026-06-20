@@ -53,6 +53,9 @@
     duf
     gping
     lazydocker
+    docker # CLI + engine client (`docker`, talks to the colima VM on macOS)
+    docker-compose
+    colima # rootless Linux VM backing docker on macOS — replaces Docker Desktop (`colima start`)
 
     # data / http / net
     jq
