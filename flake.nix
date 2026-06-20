@@ -76,10 +76,9 @@
       formatter.${darwinSystem} = lib.fmtFor darwinSystem;
       formatter.${linuxSystem} = lib.fmtFor linuxSystem;
 
-      # The only build UI (no Makefile): `nix run .#mac` / `.#linux` drive the
-      # apply.sh wrapper (nom progress + nvd diff) against the flake in your cwd;
-      # `.#demo` re-records the showcase gif. check/fmt/update stay native:
-      # `nix flake check`, `nix fmt`, `nix flake update`.
+      # `nix run .#mac` / `.#linux` drive the apply.sh wrapper (nom progress + nvd
+      # diff) against the flake in your cwd; `.#demo` re-records the showcase gif.
+      # The Makefile wraps these (run `make`) alongside check/fmt/lint/update/gc.
       apps.${darwinSystem} =
         let
           pkgs = nixpkgs.legacyPackages.${darwinSystem};
