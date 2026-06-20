@@ -43,3 +43,11 @@
   conflictstyle = zdiff3
 [diff]
   colorMoved = default
+
+# git-lfs: large-file storage. Filters declared here so LFS works on a fresh
+# machine without a separate `git lfs install` (git-lfs is in packages.nix).
+[filter "lfs"]
+  clean = git-lfs clean -- %f
+  smudge = git-lfs smudge -- %f
+  process = git-lfs filter-process
+  required = true

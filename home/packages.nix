@@ -24,6 +24,7 @@
 
     # git (delta = diff pager)
     git
+    git-lfs # large-file storage (filters wired in config/git/config)
     gh
     lazygit
     delta
