@@ -12,6 +12,9 @@
     # single file (skip secret/state siblings)
     "gh/config.yml".source = ./config/gh/config.yml;
 
+    # opencode: only the AGENTS.md guidelines (auth.json / opencode.json stay writable)
+    "opencode/AGENTS.md".source = ./config/opencode/AGENTS.md;
+
     # lazygit: not symlinked — it rewrites config.yml on schema migrations;
     # installed as a writable copy below (see lazygitConfig activation).
 
