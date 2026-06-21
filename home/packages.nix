@@ -26,7 +26,7 @@
     git
     git-lfs # large-file storage (filters wired in config/git/config)
     gh
-    gh-dash # PR/issue dashboard; gh finds it on PATH as `gh dash` (alias: ghd)
+    gh-dash # PR/issue dashboard TUI — run directly (ghd alias), not a `gh` subcommand
     lazygit
     delta
 
