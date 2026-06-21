@@ -140,8 +140,12 @@ config.max_fps = 120
 config.animation_fps = 60
 config.automatically_reload_config = true
 
--- Keyboard: CSI-u and Kitty keyboard protocol for proper modifier detection
-config.enable_csi_u_key_encoding = true
+-- Keyboard: the Kitty keyboard protocol only. Apps (Neovim, claude) negotiate
+-- enhanced key encoding on demand — disambiguates C-h from Backspace (so the
+-- vim-tmux-navigator C-h works), carries Shift+Enter into claude, and is
+-- forward-compatible. enable_csi_u_key_encoding is deliberately OFF: the WezTerm
+-- docs call it "generally not recommended" — it forces an encoding apps can't
+-- detect or opt out of, breaking some keys. Kitty protocol is the negotiated path.
 config.enable_kitty_keyboard = true
 
 -- Command palette (colors set in apply_theme)
