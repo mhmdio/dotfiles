@@ -66,8 +66,9 @@ local function apply_theme(cfg, t)
 	cfg.command_palette_fg_color = t.palette_fg
 end
 
--- Font
-config.font = wezterm.font("Maple Mono NF", { weight = "Bold" })
+-- Font (Regular as the default weight so bold renders as actual emphasis; the
+-- tab-bar/window-frame stays Bold below)
+config.font = wezterm.font("Maple Mono NF")
 config.font_size = 16
 config.harfbuzz_features = { "calt=1", "clig=1", "liga=1" }
 config.freetype_load_target = "Light"
@@ -170,17 +171,22 @@ wezterm.on("window-config-reloaded", function(window, _)
 	end
 end)
 
+-- Name the default workspace "WezTerm" (instead of "default") — shows in the
+-- right status bar and the Leader+w workspace switcher.
+config.default_workspace = "WezTerm"
+
 -- ── Leader key ─────────────────────────────────
 local act = wezterm.action
--- Leader = Ctrl+Alt+a. With Caps Lock → Ctrl (Karabiner), it's pressed Caps+Opt+a.
-config.leader = { key = "a", mods = "CTRL|ALT", timeout_milliseconds = 1500 }
+-- Leader = Ctrl+Shift+a (same modifier family as the Ctrl+Shift+P palette
+-- convention). With Caps Lock → Ctrl (Karabiner), it's pressed Caps+Shift+a.
+config.leader = { key = "a", mods = "CTRL|SHIFT", timeout_milliseconds = 1500 }
 
 config.keys = {
 	-- Shift+Enter sends literal newline
 	{ key = "Enter", mods = "SHIFT", action = act.SendString("\n") },
 
-	-- Pass through literal Ctrl+a (SOH) — press Meh+a twice
-	{ key = "a", mods = "LEADER|CTRL|ALT", action = act.SendKey({ key = "a", mods = "CTRL" }) },
+	-- Pass through literal Ctrl+a (SOH) — press the leader combo (Ctrl+Shift+a) twice
+	{ key = "a", mods = "LEADER|CTRL|SHIFT", action = act.SendKey({ key = "a", mods = "CTRL" }) },
 
 	-- Splits: create (single-key — visual shape matches the split)
 	{ key = "-", mods = "LEADER", action = act.SplitPane({ direction = "Down", size = { Percent = 50 } }) },
