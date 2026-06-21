@@ -44,9 +44,8 @@
     tree-sitter
     devenv # per-client reproducible shells (devenv.sh) + direnv
 
-    # editor / multiplexer
+    # editor (tmux comes from programs.tmux — see home/tmux.nix)
     neovim
-    tmux
 
     # system / disk / containers
     btop

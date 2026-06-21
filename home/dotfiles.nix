@@ -3,9 +3,8 @@
 { lib, pkgs, ... }:
 {
   xdg.configFile = {
-    # whole-dir tools
+    # whole-dir tools (tmux is managed via programs.tmux — see home/tmux.nix)
     "wezterm".source = ./config/wezterm;
-    "tmux".source = ./config/tmux;
     "yazi".source = ./config/yazi;
     "git".source = ./config/git;
 

@@ -18,6 +18,9 @@
     enable = true;
     autoEnable = true;
     flavor = "mocha";
+    # tmux is themed via the terminal's ANSI palette (see home/tmux.nix); skip the
+    # catppuccin plugin so it doesn't reorder plugins (continuum must stay last).
+    tmux.enable = false;
   };
 
   # High-visibility CLIs, configured as program modules so catppuccin can theme

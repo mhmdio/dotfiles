@@ -36,6 +36,11 @@ n() { if [[ $# -eq 0 ]]; then nvim .; else nvim "$@"; fi; }
 alias oc='opencode'          # AI agent (`cc` = Claude Code, see claude.zsh)
 alias reload='exec zsh'      # re-exec the shell cleanly
 
+# tmux: `t` = fzf project picker → per-project session (also prefix+f in tmux).
+alias t='tmux-sessionizer'
+alias ta='tmux attach'
+alias tl='tmux ls'
+
 # yazi (https://yazi-rs.github.io) — `y` opens yazi and cd's to its exit dir.
 y() {
   local tmp cwd
