@@ -29,6 +29,7 @@ alias ....='cd ../../..'
 alias top='btop'
 alias d='docker'
 alias lg='lazygit'
+alias ghd='gh dash'          # GitHub PR/issue dashboard (gh-dash extension)
 alias lzd='lazydocker'
 alias v='nvim'
 alias zed='zeditor'          # nixpkgs zed-editor ships its CLI as `zeditor`
