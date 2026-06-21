@@ -152,7 +152,7 @@ config.enable_kitty_keyboard = true
 -- Command palette (colors set in apply_theme)
 config.command_palette_font_size = 16
 
--- Launcher entries (Meh+a → m)
+-- Launcher entries (fuzzy launcher on Leader+m)
 config.launch_menu = {
 	{ label = "btop", args = { "btop" } },
 	{ label = "yazi", args = { "yazi" } },

@@ -5,8 +5,11 @@ gui:
   showRandomTip: false
 git:
   pagers:
+    # --hyperlinks makes delta's diff line-numbers clickable → jump straight to
+    # nvim (editPreset below). No --dark/--light: the [delta] gitconfig drives
+    # detect-dark-light=auto. (delta's own --navigate doesn't work under lazygit.)
     - colorArg: always
-      pager: delta --paging=never
+      pager: delta --paging=never --hyperlinks --hyperlinks-file-link-format='lazygit-edit://{path}:{line}'
   parseEmoji: true
 os:
   editPreset: nvim
