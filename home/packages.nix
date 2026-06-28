@@ -61,6 +61,7 @@
     # data / http / net
     jq
     jnv # interactive jq TUI — build & preview jq filters live (replaces raw jq)
+    fx # interactive JSON viewer — browse/fold/query JSON in a TUI (replaces jq/less)
     yq-go
     httpie
     xh # fast curl/httpie alternative — simpler syntax, HTTP/2

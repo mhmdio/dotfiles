@@ -341,6 +341,7 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 |---|---|
 | [jq](https://jqlang.github.io/jq/) | JSON processor |
 | [jnv](https://github.com/ynqa/jnv) | interactive `jq` filter builder |
+| [fx](https://github.com/antonmedv/fx) | interactive JSON viewer / processor |
 | [yq-go](https://mikefarah.gitbook.io/yq/) | YAML processor |
 | [httpie](https://httpie.org/) | human-friendly HTTP client |
 | [xh](https://github.com/ducaale/xh) | fast HTTP client (`curl`/`httpie`) |
