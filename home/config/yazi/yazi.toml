@@ -34,3 +34,15 @@ max_size = 10485760
 [[plugin.prepend_previewers]]
 url = "*.md"
 run = "glow"
+
+[[plugin.prepend_fetchers]]
+url   = "*"
+run   = "git"
+group = "git"
+
+[[plugin.prepend_fetchers]]
+url   = "*/"
+run   = "git"
+group = "git"
+
+
