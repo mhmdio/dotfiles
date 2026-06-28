@@ -38,21 +38,37 @@ files & nav|duf|duf|df|duf
 search & text|rg|rg|grep|rg TODO
 search & text|sd|sd|sed|sd foo bar file.txt
 search & text|choose|choose|cut / awk|echo a b c | choose 1
+search & text|fzf|fzf|fuzzy picker|vim "$(fzf)"
+search & text|ast-grep|ast-grep|grep for code|ast-grep -p 'console.log($A)'
 git|lg|lazygit|git CLI|lg
 git|delta|delta|git diff|git diff
 system & monitor|btop|btop|top / htop|btop
 system & monitor|viddy|viddy|watch|viddy -n2 date
+system & monitor|lzd|lazydocker|docker ps/logs|lzd
+system & monitor|scc|scc|cloc / wc -l|scc .
+system & monitor|hyperfine|hyperfine|time|hyperfine 'sleep 0.1'
+system & monitor|killport|killport|lsof + kill|killport 3000
+system & monitor|fastfetch|fastfetch|neofetch|fastfetch
 network|doggo|doggo|dig / nslookup|doggo example.com
 network|trip|trip|ping / traceroute|sudo trip example.com
 network|bandwhich|bandwhich|iftop / nethogs|sudo bandwhich
 network|gping|gping|ping|gping example.com
+network|rclone|rclone|rsync for cloud|rclone ls remote:
 http & json|xh|xh|curl / httpie|xh httpbin.org/get
 http & json|jnv|jnv|raw jq|jnv package.json
 http & json|fx|fx|jq / less|fx package.json
 http & json|posting|posting|Postman|posting
+http & json|yq|yq|jq for YAML|yq '.name' f.yaml
 shell & docs|starship|starship|PS1 prompt|(already your prompt)
 shell & docs|atuin|atuin|Ctrl+R history|press Ctrl-R · atuin stats
 shell & docs|tldr|tldr|man|tldr tar
+shell & docs|glow|glow|less for .md|glow README.md
+shell & docs|pandoc|pandoc|doc converter|pandoc in.md -o out.pdf
+shell & docs|,|,|run any nix pkg|, cowsay hi
+shell & docs|gum|gum|shell-script UI|gum choose a b c
+shell & docs|pwgen|pwgen|password gen|pwgen -s 20 1
+shell & docs|opencode|opencode|AI pair CLI|opencode
+tui apps|hn|hackernews_tui|Hacker News|hn
 tui apps|bagels|bagels|spreadsheet|bagels
 tui apps|harlequin|harlequin|psql / DB GUI|harlequin file.db
 tui apps|cloudlens|cloudlens|aws / gcloud UI|cloudlens
