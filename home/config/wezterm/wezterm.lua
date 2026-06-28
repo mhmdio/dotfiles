@@ -182,8 +182,10 @@ local act = wezterm.action
 config.leader = { key = "a", mods = "CTRL|SHIFT", timeout_milliseconds = 1500 }
 
 config.keys = {
-	-- Shift+Enter sends literal newline
-	{ key = "Enter", mods = "SHIFT", action = act.SendString("\n") },
+	-- Shift+Enter → CSI-u "Enter+Shift" (\x1b[13;2u) so apps (claude, nvim) insert a
+	-- newline bare AND inside tmux: tmux forwards it through extended-keys (see
+	-- tmux.conf). A bare "\n" works bare but doesn't survive tmux's key handling.
+	{ key = "Enter", mods = "SHIFT", action = act.SendString("\x1b[13;2u") },
 
 	-- Pass through literal Ctrl+a (SOH) — press the leader combo (Ctrl+Shift+a) twice
 	{ key = "a", mods = "LEADER|CTRL|SHIFT", action = act.SendKey({ key = "a", mods = "CTRL" }) },
