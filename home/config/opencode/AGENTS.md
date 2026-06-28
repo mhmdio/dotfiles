@@ -29,7 +29,7 @@ Declarative machine. Source of truth is the flake at `~/Developer/dotfiles`
 ## Tools
 
 - Editor: Zed (vim mode, CLI `zeditor`); sometimes nvim (LazyVim).
-- WezTerm terminal · Chrome browser · Obsidian notes · Docker Desktop · Raycast (⌘Space).
+- WezTerm terminal · Chrome browser · Obsidian notes · Docker (colima VM) · Raycast (⌘Space).
 - Shell: zsh. Helpers live in `home/config/shell/` (e.g. `cc` = Claude Code worktree).
 
 ## Secrets

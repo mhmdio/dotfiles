@@ -127,14 +127,17 @@ dotfiles/
 ├── username.nix          # the account to build for (stamped by bootstrap)
 ├── bootstrap.sh          # one command on a fresh machine, macOS or Linux
 ├── apply.sh              # rebuild wrapper behind `nix run .#mac|linux` — nom + nvd
+├── Makefile              # task shortcuts: make apply · build · diff · update · lint
 ├── statix.toml           # Nix lint config (nix flake check)
 ├── nix/lib.nix           # flake helpers: mkDarwin · mkHome · lint · fmt
 ├── hosts/mac.nix         # macOS system layer + GUI casks
-├── .github/              # demo.tape + demo.gif (showcase, nix run .#demo)
+├── .github/              # demo (tape + gif) + CI (lint/fmt on push)
 └── home/
     ├── shared.nix        # portable user core (zsh, direnv) — used by mac + linux
     ├── darwin.nix        # macOS-only layer: imports shared + GUI configs
+    ├── linux.nix         # Linux-only layer: shared core + catppuccin theming
     ├── packages.nix      # nixpkgs CLI tools + runtimes + GUI editors
+    ├── tmux.nix          # tmux via programs.tmux (plugins · status · sessions)
     ├── dotfiles.nix      # cross-platform dotfiles → read-only ~/.config symlinks
     ├── assets/           # wallpaper (catppuccin.heic)
     └── config/           # the actual dotfiles (shell/ nvim/ zed/ wezterm/ …)
@@ -153,7 +156,7 @@ curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh |
 ```
 
 - **macOS** → Xcode CLT → Lix → Homebrew → clone → `darwin-rebuild switch`
-- **Linux** (non-NixOS) → Lix → clone → `home-manager switch` (no sudo, no system layer)
+- **Linux** (non-NixOS) → Lix → clone → `home-manager switch` (no system layer; the switch needs no sudo, though installing Lix + enrolling a trusted user does)
 
 </details>
 
@@ -165,7 +168,7 @@ curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh |
 | Concern | Managed by |
 |---|---|
 | CLI tools + JS runtimes (node/bun) + GUI editors (Zed, WezTerm) | **nixpkgs** — `home/packages.nix` |
-| zsh + plugins (autosuggestions, syntax-highlighting, fzf-tab), git, direnv | **home-manager** — `home/shared.nix` |
+| zsh + plugins (autosuggestions, syntax-highlighting, fzf-tab), direnv | **home-manager** — `home/shared.nix` |
 | Dotfiles (`~/.config/*`) imported as read-only symlinks | **home-manager** — `home/dotfiles.nix` → `home/config/` |
 | macOS defaults, fonts, the user, system zsh *(macOS only)* | **nix-darwin** — `hosts/mac.nix` |
 | macOS GUI configs (karabiner) | **home-manager** — `home/darwin.nix` |
@@ -196,7 +199,7 @@ nix run .#linux    # apply.sh linux → home-manager switch --flake .#<you> -b b
 nix flake check    # lint + a real build of each config
 nix fmt            # format every .nix file (nixfmt)
 nix flake update   # bump flake.lock
-nix run .#demo     # re-record the showcase gif (vhs)
+nix run .#demo     # re-record the showcase gif (vhs · macOS only)
 ```
 
 ### nh — daily driver (Homebrew muscle-memory → Nix)
@@ -252,8 +255,8 @@ Then re-apply (`nix run .#mac` / `.#linux`). Search names at
 <summary><h2>Packages</h2></summary>
 
 Optional reference — every tool in [`home/packages.nix`](home/packages.nix) with a
-one-line note (plus fonts from `hosts/mac.nix`). GUI `.app` casks: `homebrew.casks` in
-`hosts/mac.nix`.
+one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). GUI
+`.app` casks: `homebrew.casks` in `hosts/mac.nix`.
 
 **core shell / file utils**
 
@@ -285,7 +288,9 @@ one-line note (plus fonts from `hosts/mac.nix`). GUI `.app` casks: `homebrew.cas
 | tool | what it is |
 |---|---|
 | [git](https://git-scm.com/) | version control |
+| [git-lfs](https://git-lfs.com/) | large-file storage |
 | [gh](https://cli.github.com/) | GitHub CLI |
+| [gh-dash](https://github.com/dlvhdr/gh-dash) | PR/issue dashboard TUI (`ghd`) |
 | [lazygit](https://github.com/jesseduffield/lazygit) | git TUI |
 | [delta](https://github.com/dandavison/delta) | syntax-highlighting diff pager |
 
@@ -326,6 +331,9 @@ one-line note (plus fonts from `hosts/mac.nix`). GUI `.app` casks: `homebrew.cas
 | [duf](https://github.com/muesli/duf/) | disk usage / free |
 | [gping](https://github.com/orf/gping) | ping with a graph |
 | [lazydocker](https://github.com/jesseduffield/lazydocker) | docker TUI |
+| [docker](https://www.docker.com/) | container CLI (talks to the colima VM) |
+| [docker-compose](https://docs.docker.com/compose/) | multi-container orchestration |
+| [colima](https://github.com/abiosoft/colima) | rootless Docker VM — replaces Docker Desktop (`colima start`) |
 
 **data / http / net**
 
@@ -434,11 +442,11 @@ Two modifier **foundations**, set in Karabiner (`home/config/karabiner/karabiner
 | **Hyper** | Right Option → `⌃⌥⇧⌘` | Global namespace — app launch + window/space actions (bound in Raycast's GUI). No app uses all four mods, so nothing collides. |
 | **Caps → Ctrl** | hold `Caps` = `Ctrl`, double-tap = `Esc` | The comfortable Ctrl for the terminal/editor (tmux, nvim, zsh vi-mode). |
 
-### WezTerm — leader `Ctrl+Alt+a` (= Caps+Opt+a)
+### WezTerm — leader `Ctrl+Shift+a` (= Caps+Shift+a)
 
 | Keys | Action |
 |---|---|
-| `⌘⌥ P` | command palette (Leader `?` aliases it) |
+| `⌘P` | command palette — incl. a tmux session switcher (Leader `?` aliases it) |
 | Leader `-` / `\|` | split down / right |
 | Leader `h j k l` · Leader `⇧ hjkl` | focus pane · resize pane |
 | Leader `r` | resize mode (then `hjkl`, `Esc`) |
