@@ -3,6 +3,7 @@ _shell_name="${_shell_name:-bash}"
 
 # Completion system early, before any compdef.
 if [[ -n "$ZSH_VERSION" ]]; then
+  mkdir -p "$XDG_CACHE_HOME/zsh" # compinit won't create the dump's parent dir
   autoload -Uz compinit && compinit -C -d "$XDG_CACHE_HOME/zsh/zcompdump"
 fi
 

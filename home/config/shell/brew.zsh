@@ -4,7 +4,7 @@
 # Requires gum (https://charm.land/libs/).
 
 _b_usage() {
-  cat <<'EOF'
+  command cat <<'EOF'
 Usage: b <command>
 
 Commands:

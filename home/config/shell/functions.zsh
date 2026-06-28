@@ -1,11 +1,11 @@
 # Transcode a video to a good-balance 1080p that's great for sharing online
 transcode-video-1080p() {
-  ffmpeg -i $1 -vf scale=1920:1080 -c:v libx264 -preset fast -crf 23 -c:a copy ${1%.*}-1080p.mp4
+  ffmpeg -i "$1" -vf scale=1920:1080 -c:v libx264 -preset fast -crf 23 -c:a copy "${1%.*}-1080p.mp4"
 }
 
 # Transcode a video to a good-balance 4K that's great for sharing online
 transcode-video-4K() {
-  ffmpeg -i $1 -c:v libx265 -preset slow -crf 24 -c:a aac -b:a 192k ${1%.*}-optimized.mp4
+  ffmpeg -i "$1" -c:v libx265 -preset slow -crf 24 -c:a aac -b:a 192k "${1%.*}-optimized.mp4"
 }
 
 # Transcode any image to JPG image that's great for shrinking wallpapers
@@ -13,7 +13,7 @@ img2jpg() {
   img="$1"
   shift
 
-  magick "$img" $@ -quality 95 -strip ${img%.*}-converted.jpg
+  magick "$img" $@ -quality 95 -strip "${img%.*}-converted.jpg"
 }
 
 # Transcode any image to JPG image that's great for sharing online without being too big
@@ -21,14 +21,14 @@ img2jpg-small() {
   img="$1"
   shift
 
-  magick "$img" $@ -resize 1080x\> -quality 95 -strip ${img%.*}-small.jpg
+  magick "$img" $@ -resize 1080x\> -quality 95 -strip "${img%.*}-small.jpg"
 }
 # Transcode any image to JPG image that's great for sharing online without being too big
 img2jpg-medium() {
   img="$1"
   shift
 
-  magick "$img" $@ -resize 1800x\> -quality 95 -strip ${img%.*}-medium.jpg
+  magick "$img" $@ -resize 1800x\> -quality 95 -strip "${img%.*}-medium.jpg"
 }
 
 # Transcode any image to compressed-but-lossless PNG
@@ -61,7 +61,13 @@ dip() {
 }
 
 lip() {
-  pgrep -af "ssh.*-L [0-9]+:localhost:[0-9]+" || echo "No active forwards"
+  # pgrep -a (full command line) is Linux-only — macOS pgrep silently ignores it.
+  # Resolve PIDs, then ps each so both platforms show the full forward command.
+  local pid found=0
+  for pid in $(pgrep -f "ssh.*-L [0-9]+:localhost:[0-9]+"); do
+    found=1; ps -o pid=,args= -p "$pid"
+  done
+  (( found )) || echo "No active forwards"
 }
 
 # AI coding tools (`ai-upgrade`) live in ~/.config/shell/ai.zsh

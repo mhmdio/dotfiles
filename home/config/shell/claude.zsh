@@ -41,8 +41,8 @@ cc() {
     if (( have_gum )); then
       gum confirm "$1"
     else
-      local REPLY; read -q "REPLY?$1 [Y/n] "; echo
-      [[ "$REPLY" != [Nn] ]]
+      local REPLY; read -r "REPLY?$1 [Y/n] " # empty (Enter) → yes
+      [[ "$REPLY" != [Nn]* ]]
     fi
   }
   _cc_note() {     # $@ = lines of styled informational text
