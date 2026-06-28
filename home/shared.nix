@@ -34,6 +34,22 @@
 
   # git/theme are managed as raw dotfiles, not via programs.* (see dotfiles.nix).
 
+  # gh: programs.gh owns ~/.config/gh/config.yml and installs gh-dash as a real
+  # extension so `gh dash` (alias ghd) works — gh won't run gh-* PATH binaries.
+  # Credential helper stays off; the raw git config already wires gh auth.
+  programs.gh = {
+    enable = true;
+    gitCredentialHelper.enable = false;
+    extensions = [ pkgs.gh-dash ];
+    settings = {
+      git_protocol = "https";
+      editor = "nvim";
+      prompt = "enabled";
+      prefer_editor_prompt = "disabled";
+      aliases.co = "pr checkout";
+    };
+  };
+
   # direnv: entry point for per-client devshells (devenv.sh).
   programs.direnv = {
     enable = true;

@@ -289,8 +289,8 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 |---|---|
 | [git](https://git-scm.com/) | version control |
 | [git-lfs](https://git-lfs.com/) | large-file storage |
-| [gh](https://cli.github.com/) | GitHub CLI |
-| [gh-dash](https://github.com/dlvhdr/gh-dash) | PR/issue dashboard TUI (`ghd`) |
+| [gh](https://cli.github.com/) | GitHub CLI (via `programs.gh`) |
+| [gh-dash](https://github.com/dlvhdr/gh-dash) | PR/issue dashboard — `gh` extension, run `gh dash` (`ghd`) |
 | [lazygit](https://github.com/jesseduffield/lazygit) | git TUI |
 | [delta](https://github.com/dandavison/delta) | syntax-highlighting diff pager |
 

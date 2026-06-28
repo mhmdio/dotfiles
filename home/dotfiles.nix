@@ -8,8 +8,7 @@
     "yazi".source = ./config/yazi;
     "git".source = ./config/git;
 
-    # single file (skip secret/state siblings)
-    "gh/config.yml".source = ./config/gh/config.yml;
+    # gh/config.yml is managed by programs.gh (see shared.nix), not symlinked here.
 
     # opencode: only the AGENTS.md guidelines (auth.json / opencode.json stay writable)
     "opencode/AGENTS.md".source = ./config/opencode/AGENTS.md;

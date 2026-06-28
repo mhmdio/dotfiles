@@ -22,11 +22,9 @@
     bat
     yazi
 
-    # git (delta = diff pager)
+    # git (delta = diff pager; gh + gh-dash come from programs.gh — see shared.nix)
     git
     git-lfs # large-file storage (filters wired in config/git/config)
-    gh
-    gh-dash # PR/issue dashboard TUI — run directly (ghd alias), not a `gh` subcommand
     lazygit
     delta
 
