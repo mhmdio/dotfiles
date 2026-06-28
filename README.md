@@ -382,6 +382,8 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [gum](https://github.com/charmbracelet/gum) | shell-script UI toolkit |
 | [hackernews-tui](https://github.com/aome510/hackernews-TUI) | Hacker News reader (`hn`) |
 | [bagels](https://github.com/EnhancedJax/Bagels) | expense tracker TUI (`bagels`) |
+| [harlequin](https://harlequin.sh/) | SQL IDE for the terminal (`harlequin`) |
+| [cloudlens](https://github.com/one2nc/cloudlens) | k9s-like TUI for AWS/GCP (`cloudlens`) |
 
 **recording / media**
 

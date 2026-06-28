@@ -52,5 +52,8 @@ http & json|fx|fx|jq / less|fx package.json
 shell & docs|starship|starship|PS1 prompt|(already your prompt)
 shell & docs|atuin|atuin|Ctrl+R history|press Ctrl-R · atuin stats
 shell & docs|tldr|tldr|man|tldr tar
+tui apps|bagels|bagels|spreadsheet|bagels
+tui apps|harlequin|harlequin|psql / DB GUI|harlequin file.db
+tui apps|cloudlens|cloudlens|aws / gcloud UI|cloudlens
 DATA
 }

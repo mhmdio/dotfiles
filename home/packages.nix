@@ -91,6 +91,8 @@
     gum
     hackernews-tui # Hacker News reader TUI (alias: hn)
     bagels # expense tracker TUI — `bagels`
+    harlequin # SQL IDE for the terminal — `harlequin`
+    cloudlens # k9s-like TUI for browsing AWS/GCP resources — `cloudlens`
 
     # recording
     asciinema
