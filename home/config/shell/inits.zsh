@@ -33,6 +33,15 @@ fi
 # fzf-tab must wrap the completion widget and load before syntax-highlighting.
 source "$HOME/.config/shell/fzf.zsh"
 
+# Atuin: SQLite-backed shell history on Ctrl-R (replaces fzf's history widget —
+# fzf.zsh skips its own ^R bind when atuin is present). --disable-up-arrow keeps
+# ↑ as prefix history-search. Sourced after fzf so atuin wins ^R; before the
+# zsh-syntax-highlighting plugin (which must stay last). Run `atuin import auto`
+# once to backfill existing history.
+if [[ -n "$ZSH_VERSION" && -t 0 && -t 1 ]] && command -v atuin &>/dev/null; then
+  eval "$(atuin init zsh --disable-up-arrow)"
+fi
+
 # Plugins: autosuggestions then syntax-highlighting (must be last). Paths come
 # from $_NIX_ZSH_* (shared.nix); guarded so re-sourcing won't re-wrap ZLE widgets.
 if [[ -n "$ZSH_VERSION" && -t 0 && -t 1 ]]; then

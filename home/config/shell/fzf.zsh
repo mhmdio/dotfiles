@@ -55,7 +55,8 @@ if command -v fzf &>/dev/null; then
       source "$_fzf_shell_dir/key-bindings.zsh"
       # Ctrl-R → fzf history widget (now that the widget is defined). This binding
       # survives the later `bindkey -v` in zoptions, so vi insert mode keeps it.
-      bindkey -M viins '^R' fzf-history-widget
+      # Skip it when Atuin is installed — Atuin owns Ctrl-R instead (see inits.zsh).
+      command -v atuin &>/dev/null || bindkey -M viins '^R' fzf-history-widget
     fi
   fi
   unset _fzf_shell_dir

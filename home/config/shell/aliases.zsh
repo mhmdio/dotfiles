@@ -31,6 +31,7 @@ alias d='docker'
 alias lg='lazygit'
 alias ghd='gh-dash'          # GitHub PR/issue dashboard TUI (gh-dash binary, from packages.nix)
 alias lzd='lazydocker'
+alias hn='hackernews-tui'    # Hacker News reader TUI
 alias v='nvim'
 alias zed='zeditor'          # nixpkgs zed-editor ships its CLI as `zeditor`
 n() { if [[ $# -eq 0 ]]; then nvim .; else nvim "$@"; fi; }
