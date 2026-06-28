@@ -18,7 +18,7 @@ endif
 
 .DEFAULT_GOAL := help
 .PHONY: help apply switch mac linux build diff generations \
-        check fmt lint update rollback gc clean bootstrap demo
+        check fmt lint update rollback gc cleanup clean bootstrap demo
 
 help: ## List every target
 	@printf '\n  \033[1mdotfiles\033[0m — make targets (host: $(HOST))\n\n'
@@ -86,6 +86,18 @@ gc: ## Delete old generations, collect garbage, optimise the store
 
 clean: ## Remove ./result build symlinks
 	rm -f result result-*
+
+cleanup: ## Reclaim disk — docker prune + nix GC + go/brew/yarn caches (skips missing tools)
+	@echo "▸ docker prune (skipped if the daemon is down)…"
+	-@command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && docker system prune -a --volumes -f
+	@echo "▸ nix garbage collection — system + user generations + store optimise…"
+	sudo nix-collect-garbage -d
+	nix-collect-garbage -d
+	nix store optimise
+	@echo "▸ tool caches — go / brew / yarn (skipped if absent)…"
+	-@command -v go   >/dev/null 2>&1 && go clean -cache
+	-@command -v brew >/dev/null 2>&1 && brew cleanup
+	-@command -v yarn >/dev/null 2>&1 && yarn cache clean
 
 # ── setup ───────────────────────────────────────────────────────────────────
 bootstrap: ## Fresh machine / full re-provision (runs ./bootstrap.sh)
