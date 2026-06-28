@@ -214,7 +214,7 @@ config.keys = {
 	-- Splits: pane picker overlay
 	{ key = "Space", mods = "LEADER", action = act.PaneSelect },
 
-	-- Splits: zoom / equalize / rotate / close
+	-- Splits: zoom / swap / rotate / close
 	{ key = "f", mods = "LEADER", action = act.TogglePaneZoomState },
 	{ key = "=", mods = "LEADER", action = act.PaneSelect({ mode = "SwapWithActive" }) },
 	{ key = "o", mods = "LEADER", action = act.RotatePanes("Clockwise") },
@@ -253,9 +253,10 @@ config.keys = {
 	-- Window fullscreen
 	{ key = "f", mods = "LEADER|SHIFT", action = act.ToggleFullScreen },
 
-	-- Command palette: ⌘⌥P (the common modifier+P convention). Leader+? kept as the
-	-- in-terminal help-style alias.
-	{ key = "p", mods = "CMD|ALT", action = act.ActivateCommandPalette },
+	-- Command palette: ⌘P. Leader+? kept as an alias; Ctrl+Shift+P (WezTerm
+	-- default) still works too. Custom tmux entries are added via
+	-- augment-command-palette below.
+	{ key = "p", mods = "CMD", action = act.ActivateCommandPalette },
 	{ key = "?", mods = "LEADER|SHIFT", action = act.ActivateCommandPalette },
 
 	-- Copy mode / quick select
@@ -343,6 +344,91 @@ wezterm.on("update-right-status", function(window, _pane)
 	table.insert(elements, "ResetAttributes")
 
 	window:set_right_status(wezterm.format(elements))
+end)
+
+-- ── Command-palette: tmux session switcher (⌘P) ──────────────────────────────
+-- Adds one palette entry, "tmux: switch session…", that opens a fuzzy list of
+-- live tmux sessions; picking one runs `tmux switch-client` to move the attached
+-- client there. (No keystroke injection — sending the prefix + ":switch-client"
+-- races with the InputSelector overlay tearing down, so the leading bytes get
+-- dropped and the rest leaks to the shell.)
+--
+-- Why one entry + InputSelector (not one palette entry per session): in this
+-- WezTerm, wezterm.run_child_process YIELDS, so it only runs inside a coroutine.
+-- The augment-command-palette hook runs OUTSIDE one (it must return entries
+-- synchronously), so shelling out there throws "attempt to yield from outside a
+-- coroutine" and the palette comes up empty. An action_callback DOES run in a
+-- coroutine, so the `tmux list-sessions` call is deferred to selection time.
+local tmux_bin = (function()
+	-- GUI apps launched by launchd have a minimal PATH and often no $USER, so
+	-- derive the user from $HOME (reliably set) and try absolute paths first. No
+	-- run_child_process here: config eval isn't a coroutine, so it can't yield.
+	local home = wezterm.home_dir or os.getenv("HOME") or ""
+	local user = home:match("([^/]+)/?$") or "" -- nix-darwin: /etc/profiles/per-user/<user>
+	for _, p in ipairs({
+		"/etc/profiles/per-user/" .. user .. "/bin/tmux",
+		home .. "/.nix-profile/bin/tmux",
+		"/run/current-system/sw/bin/tmux",
+		"/opt/homebrew/bin/tmux",
+		"/usr/local/bin/tmux",
+	}) do
+		local fh = io.open(p, "r")
+		if fh then
+			fh:close()
+			return p
+		end
+	end
+	return "tmux" -- fall back to PATH (works when WezTerm is launched from a shell)
+end)()
+
+-- Live tmux sessions as InputSelector choices (must be called from a coroutine).
+local function tmux_session_choices()
+	local ok, out = wezterm.run_child_process({
+		tmux_bin, "list-sessions", "-F", "#{session_name}\t#{session_windows}\t#{?session_attached,1,0}",
+	})
+	local choices = {}
+	if ok and out then
+		for line in out:gmatch("[^\r\n]+") do
+			local name, wins, attached = line:match("^(.-)\t(%d+)\t(%d)$")
+			if name then
+				local label = name .. "  · " .. wins .. (wins == "1" and " win" or " wins")
+				if attached == "1" then
+					label = label .. "  (attached)"
+				end
+				table.insert(choices, { id = name, label = label })
+			end
+		end
+	end
+	return choices
+end
+
+wezterm.on("augment-command-palette", function(_window, _pane)
+	return {
+		{
+			brief = "tmux: switch session…",
+			action = wezterm.action_callback(function(window, pane)
+				local choices = tmux_session_choices()
+				if #choices == 0 then
+					window:toast_notification("wezterm", "No tmux sessions found (tmux not running?)", nil, 4000)
+					return
+				end
+				window:perform_action(
+					act.InputSelector({
+						title = "tmux sessions",
+						fuzzy = true,
+						fuzzy_description = "switch to session: ",
+						choices = choices,
+						action = wezterm.action_callback(function(_win, _pane, id)
+							if id then -- nil when cancelled
+								wezterm.run_child_process({ tmux_bin, "switch-client", "-t", id })
+							end
+						end),
+					}),
+					pane
+				)
+			end),
+		},
+	}
 end)
 
 return config
