@@ -90,6 +90,7 @@
     glow
     gum
     hackernews-tui # Hacker News reader TUI (alias: hn)
+    bagels # expense tracker TUI — `bagels`
 
     # recording
     asciinema

@@ -381,6 +381,7 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [glow](https://github.com/charmbracelet/glow) | render markdown in the terminal |
 | [gum](https://github.com/charmbracelet/gum) | shell-script UI toolkit |
 | [hackernews-tui](https://github.com/aome510/hackernews-TUI) | Hacker News reader (`hn`) |
+| [bagels](https://github.com/EnhancedJax/Bagels) | expense tracker TUI (`bagels`) |
 
 **recording / media**
 
