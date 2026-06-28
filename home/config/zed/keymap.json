@@ -30,14 +30,10 @@
     }
   },
   {
+    // ctrl-r is fzf history in the terminal; unbind Zed's OpenRecent so it passes through
     "context": "Workspace",
-    "unbind": {
-      "ctrl-r": [
-        "projects::OpenRecent",
-        {
-          "create_new_window": false
-        }
-      ]
+    "bindings": {
+      "ctrl-r": null
     }
   }
 ]
