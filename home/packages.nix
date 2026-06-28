@@ -63,6 +63,7 @@
     yq-go
     httpie
     xh # fast curl/httpie alternative — simpler syntax, HTTP/2
+    posting # API client TUI — terminal Postman (`posting`)
     doggo
     trippy # `trip` — interactive traceroute (replaces ping/traceroute)
     bandwhich # live per-process network usage (replaces iftop/nethogs)

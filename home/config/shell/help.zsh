@@ -49,6 +49,7 @@ network|gping|gping|ping|gping example.com
 http & json|xh|xh|curl / httpie|xh httpbin.org/get
 http & json|jnv|jnv|raw jq|jnv package.json
 http & json|fx|fx|jq / less|fx package.json
+http & json|posting|posting|Postman|posting
 shell & docs|starship|starship|PS1 prompt|(already your prompt)
 shell & docs|atuin|atuin|Ctrl+R history|press Ctrl-R · atuin stats
 shell & docs|tldr|tldr|man|tldr tar

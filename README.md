@@ -345,6 +345,7 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [yq-go](https://mikefarah.gitbook.io/yq/) | YAML processor |
 | [httpie](https://httpie.org/) | human-friendly HTTP client |
 | [xh](https://github.com/ducaale/xh) | fast HTTP client (`curl`/`httpie`) |
+| [posting](https://github.com/darrenburns/posting) | API client TUI — terminal Postman (`posting`) |
 | [doggo](https://github.com/mr-karan/doggo) | DNS client |
 | [trippy](https://github.com/fujiapple852/trippy) | traceroute + ping TUI (`trip`) |
 | [bandwhich](https://github.com/imsnif/bandwhich) | network usage by process |
