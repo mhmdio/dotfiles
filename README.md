@@ -340,9 +340,13 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | tool | what it is |
 |---|---|
 | [jq](https://jqlang.github.io/jq/) | JSON processor |
+| [jnv](https://github.com/ynqa/jnv) | interactive `jq` filter builder |
 | [yq-go](https://mikefarah.gitbook.io/yq/) | YAML processor |
 | [httpie](https://httpie.org/) | human-friendly HTTP client |
+| [xh](https://github.com/ducaale/xh) | fast HTTP client (`curl`/`httpie`) |
 | [doggo](https://github.com/mr-karan/doggo) | DNS client |
+| [trippy](https://github.com/fujiapple852/trippy) | traceroute + ping TUI (`trip`) |
+| [bandwhich](https://github.com/imsnif/bandwhich) | network usage by process |
 | [rclone](https://rclone.org) | sync to/from cloud storage |
 
 **power CLIs**
@@ -355,7 +359,10 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [ast-grep](https://ast-grep.github.io/) | structural code search/rewrite |
 | [scc](https://github.com/boyter/scc) | fast code counter |
 | [starship](https://starship.rs) | shell prompt |
+| [atuin](https://github.com/atuinsh/atuin) | shell history on Ctrl-R (SQLite, stats, sync) |
 | [sd](https://github.com/chmln/sd) | `sed` alternative |
+| [choose](https://github.com/theryangeary/choose) | human-friendly `cut`/`awk` |
+| [viddy](https://github.com/sachaos/viddy) | modern `watch` |
 | [hyperfine](https://github.com/sharkdp/hyperfine) | CLI benchmarking |
 | [tealdeer](https://github.com/tealdeer-rs/tealdeer) | fast `tldr` pages |
 
@@ -372,6 +379,7 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [fastfetch](https://github.com/fastfetch-cli/fastfetch) | system info (neofetch-like) |
 | [glow](https://github.com/charmbracelet/glow) | render markdown in the terminal |
 | [gum](https://github.com/charmbracelet/gum) | shell-script UI toolkit |
+| [hackernews-tui](https://github.com/aome510/hackernews-TUI) | Hacker News reader (`hn`) |
 
 **recording / media**
 
@@ -482,13 +490,13 @@ Stock **LazyVim** keymaps (no repo overrides); `Space` opens which-key. See the 
 
 | Keys | Action |
 |---|---|
-| `Ctrl+R` | fuzzy history (fzf); `Ctrl+Y` copies the match |
+| `Ctrl+R` | shell history search (Atuin — SQLite, stats, exit codes, optional sync) |
 | `Ctrl+T` · `Alt+C` | insert file/dir path · cd into a dir |
 | `Tab` | fzf-tab completion (with previews) |
 | `Esc` (or double-tap Caps) · `v` | vi normal mode · edit command in `$EDITOR` |
 | `Ctrl+A/E` · `Ctrl+K/U/W` · `Ctrl+Y` | line start/end · kill line/line-back/word · yank |
 
-Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd · `v`/`n` nvim · `lg` lazygit · `g` + git shorthands. Source: `home/config/shell/*.zsh`.
+Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd · `v`/`n` nvim · `lg` lazygit · `hn` Hacker News · `g` + git shorthands. Type **`help`** for a colour cheatsheet of the modern-CLI replacements. Source: `home/config/shell/*.zsh`.
 
 </details>
 
