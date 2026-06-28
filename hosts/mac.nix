@@ -108,19 +108,14 @@
   homebrew = {
     enable = true;
     onActivation = {
-      # cleanup="zap" would emit brew's deprecated `--cleanup` switch (Homebrew 6.x).
-      # Reproduce the same forced zap-prune with brew's current flags via extraFlags:
-      # --force-cleanup performs+forces the prune, --zap also clears each cask's data.
-      cleanup = "none";
+      # zap-prune: remove any cask not in the list below and clear its app data.
+      # (nix-darwin emits `--zap --force-cleanup` for this — verified at the pinned rev.)
+      cleanup = "zap";
       # Both default false for idempotency — leave them off so a switch never refreshes
       # brew or upgrades casks behind your back (an unasked-for upgrade once broke a
       # mid-activation docker-desktop bump). Refresh casks deliberately, not on switch.
       autoUpdate = false;
       upgrade = false;
-      extraFlags = [
-        "--zap"
-        "--force-cleanup"
-      ];
     };
 
     casks = [

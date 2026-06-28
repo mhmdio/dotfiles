@@ -82,7 +82,11 @@ case "$PLATFORM" in
     fi
     ;;
   linux)
-    TARGET="${USER:-$(id -un)}"
+    # Match the account the flake builds for (bootstrap stamps username.nix), so
+    # `make linux` still resolves when DOTFILES_USER ≠ the login user; fall back
+    # to the login user if the file is missing/unparseable.
+    TARGET="$(sed -n 's/^[[:space:]]*"\(.*\)".*/\1/p' username.nix 2>/dev/null | head -1)"
+    [ -n "$TARGET" ] || TARGET="${USER:-$(id -un)}"
     # aarch64 boxes build the -aarch64 home config (see flake homeConfigurations).
     case "$(uname -m)" in aarch64 | arm64) TARGET="${TARGET}-aarch64" ;; esac
     step "apply  .#${TARGET}   ·   home-manager switch"
