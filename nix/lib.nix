@@ -5,6 +5,24 @@
 { inputs }:
 let
   inherit (inputs) nixpkgs nix-darwin home-manager;
+
+  # nixpkgs (unstable) still trails upstream on some tools; override here when we
+  # want the tip release ahead of the channel. Applied on both macOS + Linux.
+  overlays = [
+    (final: prev: {
+      tmux = prev.tmux.overrideAttrs (_old: {
+        version = "3.7b";
+        src = prev.fetchFromGitHub {
+          owner = "tmux";
+          repo = "tmux";
+          tag = "3.7b";
+          hash = "sha256-CTq06XP997M0ODxQihTq34dI9H6jSRLUXLYuTWOwDpc=";
+        };
+        # nixpkgs' control_write NULL-deref patch is already merged upstream by 3.7b
+        patches = [ ];
+      });
+    })
+  ];
 in
 {
   # macOS: full system (nix-darwin) + that user's home-manager.
@@ -22,6 +40,7 @@ in
         username = user;
       };
       modules = [
+        { nixpkgs.overlays = overlays; }
         hostModule
         home-manager.darwinModules.home-manager
         {
@@ -47,7 +66,7 @@ in
     }:
     home-manager.lib.homeManagerConfiguration {
       pkgs = import nixpkgs {
-        inherit system;
+        inherit system overlays;
         config.allowUnfree = true;
       };
       extraSpecialArgs = {
