@@ -41,6 +41,7 @@ search & text|choose|choose|cut / awk|echo a b c | choose 1
 search & text|fzf|fzf|fuzzy picker|vim "$(fzf)"
 search & text|ast-grep|ast-grep|grep for code|ast-grep -p 'console.log($A)'
 git|lg|lazygit|git CLI|lg
+git|lwt|lazyworktree|git worktree add|lwt
 git|delta|delta|git diff|git diff
 system & monitor|btop|btop|top / htop|btop
 system & monitor|viddy|viddy|watch|viddy -n2 date
@@ -72,5 +73,6 @@ tui apps|hn|hackernews_tui|Hacker News|hn
 tui apps|bagels|bagels|spreadsheet|bagels
 tui apps|harlequin|harlequin|psql / DB GUI|harlequin file.db
 tui apps|cloudlens|cloudlens|aws / gcloud UI|cloudlens
+media|yt-dlp|yt-dlp|youtube-dl|yt-dlp -f mp4 <url>
 DATA
 }

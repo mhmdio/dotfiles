@@ -26,6 +26,7 @@
     git
     git-lfs # large-file storage (filters wired in config/git/config)
     lazygit
+    lazyworktree # git worktree manager TUI (alias: lwt)
     delta
 
     # nix helpers
@@ -101,6 +102,7 @@
     # media (transcode/convert helpers in functions.zsh)
     ffmpeg
     imagemagick
+    yt-dlp # video/audio downloader — YouTube + 1000s of sites (`yt-dlp <url>`)
 
     # GUI apps from nixpkgs
     _1password-cli # `op` CLI

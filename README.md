@@ -393,6 +393,7 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [asciinema](https://asciinema.org/) | terminal session recorder |
 | [ffmpeg](https://www.ffmpeg.org/) | audio/video convert & stream |
 | [imagemagick](https://imagemagick.org/) | image convert & edit |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | video/audio downloader (YouTube + 1000s of sites) |
 
 **GUI apps (from nixpkgs)**
 

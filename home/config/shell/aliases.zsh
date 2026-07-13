@@ -29,6 +29,7 @@ alias ....='cd ../../..'
 alias top='btop'
 alias d='docker'
 alias lg='lazygit'
+alias lwt='lazyworktree'     # git worktree manager TUI
 alias ghd='gh dash'          # GitHub PR/issue dashboard TUI (gh extension, via programs.gh)
 alias lzd='lazydocker'
 alias hn='hackernews_tui'    # Hacker News reader TUI (binary is underscored)
