@@ -1,8 +1,10 @@
 name: ci
 
-# Lint + format only — fast, no system build. The full mac/linux config builds
-# (checks.*.darwin / .home) are deliberately left to local `make check`; building
-# a whole nix-darwin system in CI is overkill for now.
+# Lint + format + eval — fast, no system build. Eval instantiates every config
+# through the module system, so a renamed package or invalid option fails here.
+# The full mac/linux config builds (checks.*.darwin / .home) are deliberately
+# left to local `make check`; building a whole nix-darwin system in CI is
+# overkill for now.
 on:
   push:
     branches: [main]
@@ -20,8 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/nix-installer-action@v22
       - name: lint  ·  deadnix · statix · shellcheck
         run: nix build -L --no-link .#checks.x86_64-linux.lint
       - name: fmt   ·  nixfmt --check
         run: nix build -L --no-link .#checks.x86_64-linux.fmt
+      - name: eval  ·  darwin + home configs
+        run: |
+          user="$(nix eval --raw --file username.nix)"
+          nix eval --raw .#darwinConfigurations.mac.system.drvPath
+          nix eval --raw .#homeConfigurations."$user".activationPackage.drvPath
+          nix eval --raw .#homeConfigurations."$user-aarch64".activationPackage.drvPath
