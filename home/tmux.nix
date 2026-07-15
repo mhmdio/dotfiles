@@ -4,43 +4,88 @@
 # read in below as extraConfig.
 { pkgs, ... }:
 let
-  # Project switcher (ThePrimeagen-style): fzf-pick a directory under ~/Developer
-  # and create/attach a tmux session named after it — one session per project.
+  # Session picker: pretty fzf list of live tmux sessions (current one excluded)
+  # — attached/detached dot, windows count, last activity — with a live
+  # capture-pane preview. Pick one → attach/switch. `t <dir|session>` skips the
+  # picker: a dir creates a session named after it (if missing) and jumps in.
   # Bound to prefix+f (popup) and exposed as the `t` shell command.
   tmux-sessionizer = pkgs.writeShellApplication {
     name = "tmux-sessionizer";
     runtimeInputs = [
       pkgs.fzf
-      pkgs.fd
       pkgs.tmux
       pkgs.coreutils
     ];
     text = ''
-      if [ "$#" -eq 1 ]; then
-        selected=$1
-      else
-        selected=$(
-          {
-            fd --type d --min-depth 1 --max-depth 1 . "$HOME/Developer" 2>/dev/null || true
-            fd --type d --min-depth 1 --max-depth 2 . "$HOME/Developer/work" 2>/dev/null || true
-          } | fzf --prompt='project ❯ ' --reverse --border || true
-        )
+      TAB=$'\t'
+
+      current=""
+      if [ -n "''${TMUX:-}" ]; then
+        current="$(tmux display-message -p '#S')"
       fi
 
-      if [ -z "''${selected:-}" ]; then
+      if [ "$#" -eq 1 ]; then
+        target="$1"
+      else
+        sessions="$(tmux list-sessions \
+          -F "#{session_name}''${TAB}#{session_windows}''${TAB}#{session_attached}''${TAB}#{session_activity}" \
+          2>/dev/null || true)"
+
+        # Two fzf columns: field 1 = raw session name (hidden), field 2 = display.
+        now="$(date +%s)"
+        list=""
+        while IFS="$TAB" read -r name windows attached activity; do
+          if [ -z "$name" ] || [ "$name" = "$current" ]; then continue; fi
+          age=$((now - activity))
+          if [ "$age" -lt 60 ]; then when="just now"
+          elif [ "$age" -lt 3600 ]; then when="$((age / 60))m ago"
+          elif [ "$age" -lt 86400 ]; then when="$((age / 3600))h ago"
+          else when="$((age / 86400))d ago"; fi
+          if [ "$attached" -gt 0 ]; then
+            dot=$'\033[1;32m●\033[0m' state=$'\033[32mattached\033[0m'
+          else
+            dot=$'\033[1;34m○\033[0m' state=$'\033[2mdetached\033[0m'
+          fi
+          printf -v line '%s\t%s \033[1m%-18s\033[0m \033[2m%2s win\033[0m  %s \033[2m· %s\033[0m' \
+            "$name" "$dot" "$name" "$windows" "$state" "$when"
+          list+="$line"$'\n'
+        done <<< "$sessions"
+
+        if [ -z "$list" ]; then
+          msg='no tmux sessions to pick — t <dir> starts one'
+          if [ -n "''${TMUX:-}" ]; then tmux display-message "$msg"; else echo "$msg"; fi
+          exit 0
+        fi
+
+        target="$(
+          printf '%s' "$list" | fzf --ansi --reverse --border \
+            --prompt='session ❯ ' --border-label=' tmux sessions ' \
+            --header='↵ attach · esc quit' \
+            --delimiter="$TAB" --with-nth=2 --nth=2 \
+            --preview 'tmux capture-pane -ep -t {1}' \
+            --preview-window='right,55%,border-left' \
+            || true
+        )"
+        target="''${target%%"''${TAB}"*}"
+      fi
+
+      if [ -z "''${target:-}" ]; then
         exit 0
       fi
 
-      name=$(basename "$selected" | tr '. ' '__')
-
-      if ! tmux has-session -t="$name" 2>/dev/null; then
-        tmux new-session -ds "$name" -c "$selected"
+      if [ -d "$target" ]; then
+        name="$(basename "$target" | tr '. ' '__')"
+        if ! tmux has-session -t "=$name" 2>/dev/null; then
+          tmux new-session -ds "$name" -c "$target"
+        fi
+      else
+        name="$target"
       fi
 
       if [ -z "''${TMUX:-}" ]; then
-        tmux attach -t "$name"
+        exec tmux attach -t "=$name"
       else
-        tmux switch-client -t "$name"
+        exec tmux switch-client -t "=$name"
       fi
     '';
   };
