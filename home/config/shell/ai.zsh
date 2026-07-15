@@ -36,12 +36,15 @@ _ai_upgrade_one() {
       gum style --faint "   ⊘ ${name} is Nix-managed — skip (make update && make apply)"
       return ;;
   esac
-  gum spin --spinner dot --title "Upgrading ${name}..." -- "$@"
-  gum style --faint "   ✅ ${name} done"
+  if gum spin --show-error --spinner dot --title "Upgrading ${name}..." -- "$@"; then
+    gum style --faint "   ✅ ${name} done"
+  else
+    gum style --foreground 1 "   ✗ ${name} failed"
+  fi
 }
 
 _ai_upgrade() {
-  command -v gum &>/dev/null || { echo "gum is required: brew install gum" >&2; return 1; }
+  command -v gum &>/dev/null || { echo "gum is required (Nix-managed): make apply" >&2; return 1; }
 
   gum style --border rounded --padding "0 1" --bold "🤖 AI Tools Upgrade"
 

@@ -16,7 +16,7 @@
   cm = commit -m
   rv = remote -v
   d = diff
-  dv = difftool -t vimdiff -y
+  dv = difftool -t nvimdiff -y
   gl = config --global -l
 [init]
   defaultBranch = main

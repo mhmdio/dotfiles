@@ -14,7 +14,7 @@ EOF
 }
 
 _b_require() {
-  command -v gum  &>/dev/null || { echo "gum is required: brew install gum" >&2; return 1; }
+  command -v gum  &>/dev/null || { echo "gum is required (Nix-managed): make apply" >&2; return 1; }
   command -v brew &>/dev/null || { echo "brew is not installed" >&2; return 1; }
 }
 

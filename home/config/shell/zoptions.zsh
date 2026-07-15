@@ -29,8 +29,8 @@ setopt COMBINING_CHARS
 # Case-insensitive completion
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|=* l:|=*'
 
-# Show all completions immediately without needing to press tab twice
-setopt MENU_COMPLETE
+# NB: no MENU_COMPLETE — it inserts the first match before fzf-tab can open its
+# picker (fzf.zsh sets `menu no`, which fzf-tab requires).
 setopt AUTO_MENU
 
 # Arrow keys: history search matching current input

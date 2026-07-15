@@ -19,7 +19,7 @@
 # colors follow the terminal's 16-color palette → dark/light adaptive
 --color=16
 
-# keybinds
+# keybinds (ctrl-y copy is pbcopy = macOS-only; silently no-ops on Linux)
 --bind='ctrl-/:toggle-preview'
 --bind='alt-up:preview-page-up,alt-down:preview-page-down'
 --bind='ctrl-y:execute-silent(printf %s {} | pbcopy)+abort'

@@ -14,7 +14,7 @@ set -euo pipefail
 
 REPO_URL="${DOTFILES_REPO_URL:-https://github.com/mhmdio/dotfiles}"
 REPO_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
-DOTFILES_USER="${DOTFILES_USER:-$USER}"
+DOTFILES_USER="${DOTFILES_USER:-${USER:-$(id -un)}}"
 # Bootstrap DRIVER frontends that run the first switch — pinned to a stable release
 # for a dependable first run. The flake's own inputs (nixpkgs/nix-darwin/home-manager
 # on master) build the actual config, so this 25.11-vs-unstable skew is intentional.

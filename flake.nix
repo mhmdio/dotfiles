@@ -56,9 +56,10 @@
       };
     in
     {
-      # `nix flake check`: lint + fmt + a real build of each config. CI runs only the
-      # cheap lint/fmt checks (see .github/workflows/ci.yml); the system builds
-      # (.darwin / .home) stay local — `make check`.
+      # `nix flake check`: lint + fmt + a real build of each config. CI runs the
+      # cheap lint/fmt checks plus an eval of every config (see
+      # .github/workflows/ci.yml); the system builds (.darwin / .home) stay
+      # local — `make check`.
       checks.${darwinSystem} = {
         lint = lib.lintFor {
           system = darwinSystem;
@@ -89,42 +90,36 @@
       # `nix run .#mac` / `.#linux` drive the apply.sh wrapper (nom progress + nvd
       # diff) against the flake in your cwd; `.#demo` re-records the showcase gif.
       # The Makefile wraps these (run `make`) alongside check/fmt/lint/update/gc.
-      apps.${darwinSystem} =
+      apps =
         let
-          pkgs = nixpkgs.legacyPackages.${darwinSystem};
+          darwinPkgs = nixpkgs.legacyPackages.${darwinSystem};
         in
         {
-          mac = {
-            type = "app";
-            program = "${pkgs.writeShellScript "mac" "exec ${pkgs.bash}/bin/bash ${./apply.sh} mac"}";
+          ${darwinSystem} = {
+            mac = {
+              type = "app";
+              program = "${darwinPkgs.writeShellScript "mac" "exec ${darwinPkgs.bash}/bin/bash ${./apply.sh} mac"}";
+            };
+            demo = {
+              type = "app";
+              program = "${darwinPkgs.writeShellScript "demo" "exec ${darwinPkgs.vhs}/bin/vhs .github/demo.tape"}";
+            };
           };
-          demo = {
-            type = "app";
-            program = "${pkgs.writeShellScript "demo" "exec ${pkgs.vhs}/bin/vhs .github/demo.tape"}";
-          };
-        };
-      # `nix run .#linux` on both Linux arches (apply.sh picks the matching home
-      # config by `uname -m`).
-      apps.${linuxSystem} =
-        let
-          pkgs = nixpkgs.legacyPackages.${linuxSystem};
-        in
-        {
-          linux = {
-            type = "app";
-            program = "${pkgs.writeShellScript "linux" "exec ${pkgs.bash}/bin/bash ${./apply.sh} linux"}";
-          };
-        };
-      apps."aarch64-linux" =
-        let
-          pkgs = nixpkgs.legacyPackages."aarch64-linux";
-        in
-        {
-          linux = {
-            type = "app";
-            program = "${pkgs.writeShellScript "linux" "exec ${pkgs.bash}/bin/bash ${./apply.sh} linux"}";
-          };
-        };
+        }
+        # `nix run .#linux` on both Linux arches (apply.sh picks the matching home
+        # config by `uname -m`).
+        // nixpkgs.lib.genAttrs [ linuxSystem "aarch64-linux" ] (
+          system:
+          let
+            pkgs = nixpkgs.legacyPackages.${system};
+          in
+          {
+            linux = {
+              type = "app";
+              program = "${pkgs.writeShellScript "linux" "exec ${pkgs.bash}/bin/bash ${./apply.sh} linux"}";
+            };
+          }
+        );
 
       # macOS host (apply: nix run .#mac). Add darwin boxes by repeating mkDarwin
       # with another hostModule/user.

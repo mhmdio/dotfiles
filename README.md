@@ -292,6 +292,7 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [gh](https://cli.github.com/) | GitHub CLI (via `programs.gh`) |
 | [gh-dash](https://github.com/dlvhdr/gh-dash) | PR/issue dashboard — `gh` extension, run `gh dash` (`ghd`) |
 | [lazygit](https://github.com/jesseduffield/lazygit) | git TUI |
+| [lazyworktree](https://github.com/chmouel/lazyworktree) | git worktree manager TUI (`lwt`) |
 | [delta](https://github.com/dandavison/delta) | syntax-highlighting diff pager |
 
 **nix helpers**
@@ -485,7 +486,7 @@ Source: `home/config/tmux/tmux.conf`.
 
 ### Neovim — leader `Space`
 
-Stock **LazyVim** keymaps (no repo overrides); `Space` opens which-key. See the [LazyVim keymaps](https://www.lazyvim.org/keymaps).
+Stock **LazyVim** keymaps plus a few plugin rebinds: `Ctrl-h/j/k/l` navigates nvim splits *and* tmux panes (vim-tmux-navigator), `<leader>-` opens yazi at the current file (replacing LazyVim's split-below), `Ctrl-Up` resumes it. `Space` opens which-key. See the [LazyVim keymaps](https://www.lazyvim.org/keymaps).
 
 ### Yazi & Lazygit
 

@@ -10,33 +10,33 @@ transcode-video-4K() {
 
 # Transcode any image to JPG image that's great for shrinking wallpapers
 img2jpg() {
-  img="$1"
+  local img="$1"
   shift
 
-  magick "$img" $@ -quality 95 -strip "${img%.*}-converted.jpg"
+  magick "$img" "$@" -quality 95 -strip "${img%.*}-converted.jpg"
 }
 
 # Transcode any image to JPG image that's great for sharing online without being too big
 img2jpg-small() {
-  img="$1"
+  local img="$1"
   shift
 
-  magick "$img" $@ -resize 1080x\> -quality 95 -strip "${img%.*}-small.jpg"
+  magick "$img" "$@" -resize 1080x\> -quality 95 -strip "${img%.*}-small.jpg"
 }
 # Transcode any image to JPG image that's great for sharing online without being too big
 img2jpg-medium() {
-  img="$1"
+  local img="$1"
   shift
 
-  magick "$img" $@ -resize 1800x\> -quality 95 -strip "${img%.*}-medium.jpg"
+  magick "$img" "$@" -resize 1800x\> -quality 95 -strip "${img%.*}-medium.jpg"
 }
 
 # Transcode any image to compressed-but-lossless PNG
 img2png() {
-  img="$1"
+  local img="$1"
   shift
 
-  magick "$img" $@ -strip -define png:compression-filter=5 \
+  magick "$img" "$@" -strip -define png:compression-filter=5 \
     -define png:compression-level=9 \
     -define png:compression-strategy=1 \
     -define png:exclude-chunk=all \
@@ -46,7 +46,7 @@ img2png() {
 # SSH Port Forwarding Functions
 fip() {
   [[ $# -lt 2 ]] && echo "Usage: fip <host> <port1> [port2] ..." && return 1
-  local host="$1"
+  local host="$1" port
   shift
   for port in "$@"; do
     ssh -f -N -L "$port:localhost:$port" "$host" && echo "Forwarding localhost:$port -> $host:$port"
@@ -55,6 +55,7 @@ fip() {
 
 dip() {
   [[ $# -eq 0 ]] && echo "Usage: dip <port1> [port2] ..." && return 1
+  local port
   for port in "$@"; do
     pkill -f "ssh.*-L $port:localhost:$port" && echo "Stopped forwarding port $port" || echo "No forwarding on port $port"
   done

@@ -1,112 +1,118 @@
 # Cross-platform CLI tools + runtimes (nixpkgs), shared by macOS + Linux.
 # Client tools (kubectl, terraform, …) never here — those go in devenv.sh.
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
-  home.packages = with pkgs; [
-    # core shell / file utils
-    coreutils
-    gawk
-    gnupg
-    curl
-    wget
-    rsync
-    unzip
-    p7zip
+  home.packages =
+    with pkgs;
+    [
+      # core shell / file utils
+      coreutils
+      gawk
+      gnupg
+      curl
+      wget
+      rsync
+      unzip
+      p7zip
 
-    # search / nav / viewers
-    ripgrep
-    fd
-    fzf
-    zoxide
-    eza
-    bat
-    yazi
+      # search / nav / viewers
+      ripgrep
+      fd
+      fzf
+      zoxide
+      eza
+      yazi
 
-    # git (delta = diff pager; gh + gh-dash come from programs.gh — see shared.nix)
-    git
-    git-lfs # large-file storage (filters wired in config/git/config)
-    lazygit
-    lazyworktree # git worktree manager TUI (alias: lwt)
-    delta
+      # git (delta = diff pager; gh + gh-dash come from programs.gh — see shared.nix)
+      git
+      git-lfs # large-file storage (filters wired in config/git/config)
+      lazygit
+      lazyworktree # git worktree manager TUI (alias: lwt)
+      delta
 
-    # nix helpers
-    nix-output-monitor # nom: live build progress for `nix run .#mac` / `.#linux`
-    nh # nicer rebuild/GC front-end (nom output + generation diff)
-    nvd # generation diff — apply.sh shows what changed after a switch
-    comma
-    nix-index # `, <cmd>` runs any nixpkg uninstalled (run `nix-index` once)
+      # nix helpers
+      nix-output-monitor # nom: live build progress for `nix run .#mac` / `.#linux`
+      nh # nicer rebuild/GC front-end (nom output + generation diff)
+      nvd # generation diff — apply.sh shows what changed after a switch
+      comma
+      nix-index # `, <cmd>` runs any nixpkg uninstalled (run `nix-index` once)
 
-    # dev runtimes / build (language runtimes live per-client in devenv.sh)
-    gcc
-    nodejs_24
-    bun
-    pnpm
-    tree-sitter
-    devenv # per-client reproducible shells (devenv.sh) + direnv
+      # dev runtimes / build (language runtimes live per-client in devenv.sh)
+      gcc
+      nodejs_24
+      bun
+      pnpm
+      tree-sitter
+      devenv # per-client reproducible shells (devenv.sh) + direnv
 
-    # editor (tmux comes from programs.tmux — see home/tmux.nix)
-    neovim
+      # editor (tmux comes from programs.tmux — see home/tmux.nix)
+      neovim
 
-    # system / disk / containers
-    btop
-    dust
-    duf
-    gping
-    lazydocker
-    docker # CLI + engine client (`docker`, talks to the colima VM on macOS)
-    docker-compose
-    colima # rootless Linux VM backing docker on macOS — replaces Docker Desktop (`colima start`)
+      # system / disk / containers
+      dust
+      duf
+      gping
+      lazydocker
+      docker # CLI + engine client (`docker`, talks to the colima VM on macOS)
+      docker-compose
+      colima # rootless Linux VM backing docker on macOS — replaces Docker Desktop (`colima start`)
 
-    # data / http / net
-    jq
-    jnv # interactive jq TUI — build & preview jq filters live (replaces raw jq)
-    fx # interactive JSON viewer — browse/fold/query JSON in a TUI (replaces jq/less)
-    yq-go
-    httpie
-    xh # fast curl/httpie alternative — simpler syntax, HTTP/2
-    posting # API client TUI — terminal Postman (`posting`)
-    doggo
-    trippy # `trip` — interactive traceroute (replaces ping/traceroute)
-    bandwhich # live per-process network usage (replaces iftop/nethogs)
-    rclone
+      # data / http / net
+      jq
+      jnv # interactive jq TUI — build & preview jq filters live (replaces raw jq)
+      fx # interactive JSON viewer — browse/fold/query JSON in a TUI (replaces jq/less)
+      yq-go
+      httpie
+      xh # fast curl/httpie alternative — simpler syntax, HTTP/2
+      posting # API client TUI — terminal Postman (`posting`)
+      doggo
+      trippy # `trip` — interactive traceroute (replaces ping/traceroute)
+      bandwhich # live per-process network usage (replaces iftop/nethogs)
+      rclone
 
-    # power CLIs (sd=sed, hyperfine=bench, tealdeer=tldr, choose=cut/awk)
-    pandoc
-    killport
-    pwgen
-    ast-grep
-    scc
-    starship
-    atuin # SQLite shell history on Ctrl-R — stats, exit codes, optional sync
-    sd
-    choose # field selection by index (replaces cut/awk) — e.g. `choose 1`
-    viddy # modern `watch` — time-travel, diffs, history
-    hyperfine
-    tealdeer
+      # power CLIs (sd=sed, hyperfine=bench, tealdeer=tldr, choose=cut/awk)
+      pandoc
+      killport
+      pwgen
+      ast-grep
+      scc
+      starship
+      atuin # SQLite shell history on Ctrl-R — stats, exit codes, optional sync
+      sd
+      choose # field selection by index (replaces cut/awk) — e.g. `choose 1`
+      viddy # modern `watch` — time-travel, diffs, history
+      hyperfine
+      tealdeer
 
-    # AI / agent
-    opencode
+      # AI / agent
+      opencode
 
-    # fetch / pretty
-    fastfetch
-    glow
-    gum
-    hackernews-tui # Hacker News reader TUI (alias: hn)
-    bagels # expense tracker TUI — `bagels`
-    harlequin # SQL IDE for the terminal — `harlequin`
-    cloudlens # k9s-like TUI for browsing AWS/GCP resources — `cloudlens`
+      # fetch / pretty
+      fastfetch
+      glow
+      gum
+      hackernews-tui # Hacker News reader TUI (alias: hn)
+      bagels # expense tracker TUI — `bagels`
+      harlequin # SQL IDE for the terminal — `harlequin`
+      cloudlens # k9s-like TUI for browsing AWS/GCP resources — `cloudlens`
 
-    # recording
-    asciinema
+      # recording
+      asciinema
 
-    # media (transcode/convert helpers in functions.zsh)
-    ffmpeg
-    imagemagick
-    yt-dlp # video/audio downloader — YouTube + 1000s of sites (`yt-dlp <url>`)
+      # media (transcode/convert helpers in functions.zsh)
+      ffmpeg
+      imagemagick
+      yt-dlp # video/audio downloader — YouTube + 1000s of sites (`yt-dlp <url>`)
 
-    # GUI apps from nixpkgs
-    _1password-cli # `op` CLI
-    wezterm # terminal
-    zed-editor # editor (CLI: zeditor)
-  ];
+      # GUI apps from nixpkgs
+      _1password-cli # `op` CLI
+      wezterm # terminal
+      zed-editor # editor (CLI: zeditor)
+    ]
+    # bat/btop: raw packages here on macOS (raw configs in dotfiles.nix); on Linux
+    # they come via programs.bat/btop instead so catppuccin themes them (linux.nix).
+    ++ lib.optionals stdenv.hostPlatform.isDarwin [
+      bat
+      btop
+    ];
 }
