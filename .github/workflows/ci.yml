@@ -27,9 +27,15 @@ jobs:
         run: nix build -L --no-link .#checks.x86_64-linux.lint
       - name: fmt   ·  nixfmt --check
         run: nix build -L --no-link .#checks.x86_64-linux.fmt
-      - name: eval  ·  darwin + home configs
+      - name: eval  ·  darwin + home + server configs
         run: |
           user="$(nix eval --raw --file username.nix)"
           nix eval --raw .#darwinConfigurations.mac.system.drvPath
           nix eval --raw .#homeConfigurations."$user".activationPackage.drvPath
           nix eval --raw .#homeConfigurations."$user-aarch64".activationPackage.drvPath
+          # Headless profile (home/server.nix) — the account is the flake's
+          # serverUser, not username.nix; -aarch64 is what the Hetzner cax11 uses.
+          server="$(nix eval --raw .#homeConfigurations --apply \
+            'c: builtins.head (builtins.filter (n: builtins.match ".*-server" n != null) (builtins.attrNames c))')"
+          nix eval --raw .#homeConfigurations."$server".activationPackage.drvPath
+          nix eval --raw .#homeConfigurations."$server-aarch64".activationPackage.drvPath

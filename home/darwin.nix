@@ -1,8 +1,8 @@
-# macOS-only home layer: imports the shared core + macOS GUI configs.
-# The Linux homeConfiguration uses shared.nix directly and never sees this.
+# macOS-only home layer: imports the workstation profile + macOS GUI configs.
+# The Linux homeConfigurations import that profile directly and never see this.
 { pkgs, lib, ... }:
 {
-  imports = [ ./shared.nix ];
+  imports = [ ./workstation.nix ];
 
   home.packages = [ pkgs.mas ]; # Mac App Store CLI
 

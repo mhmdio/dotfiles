@@ -30,6 +30,13 @@
       # ANY account with no manual edit. Forking = adjust casks only.
       username = import ./username.nix;
 
+      # Headless boxes build for their own service account, not the desktop user
+      # — the homelab repo's Ansible run activates `<serverUser>-server-aarch64`
+      # on the Hetzner VM as that user. Kept literal (not username.nix) because it
+      # names a remote account, which has nothing to do with whoever owns this
+      # laptop. apply.sh greps this line, so keep the `serverUser = "…";` shape.
+      serverUser = "admin";
+
       darwinSystem = "aarch64-darwin"; # Apple Silicon
       linuxSystem = "x86_64-linux"; # non-NixOS Linux
 
@@ -53,6 +60,20 @@
         system = "aarch64-linux";
         user = username;
         modules = [ ./home/linux.nix ];
+      };
+
+      # Headless: core packages + Mocha, no desktop layer (see home/server.nix).
+      # Both arches so the profile works on a CX/CPX (x86_64) or a CAX (aarch64);
+      # mobot is a cax11, so the -aarch64 name is the one that actually gets used.
+      serverMain = lib.mkHome {
+        system = linuxSystem;
+        user = serverUser;
+        modules = [ ./home/server.nix ];
+      };
+      serverArm = lib.mkHome {
+        system = "aarch64-linux";
+        user = serverUser;
+        modules = [ ./home/server.nix ];
       };
     in
     {
@@ -81,14 +102,16 @@
           src = ./.;
         };
         home = homeMain.activationPackage;
+        server = serverMain.activationPackage;
       };
 
       # `nix fmt` — nixfmt across all .nix files.
       formatter.${darwinSystem} = lib.fmtFor darwinSystem;
       formatter.${linuxSystem} = lib.fmtFor linuxSystem;
 
-      # `nix run .#mac` / `.#linux` drive the apply.sh wrapper (nom progress + nvd
-      # diff) against the flake in your cwd; `.#demo` re-records the showcase gif.
+      # `nix run .#mac` / `.#linux` / `.#server` drive the apply.sh wrapper (nom
+      # progress + nvd diff) against the flake in your cwd; `.#demo` re-records
+      # the showcase gif.
       # The Makefile wraps these (run `make`) alongside check/fmt/lint/update/gc.
       apps =
         let
@@ -118,6 +141,10 @@
               type = "app";
               program = "${pkgs.writeShellScript "linux" "exec ${pkgs.bash}/bin/bash ${./apply.sh} linux"}";
             };
+            server = {
+              type = "app";
+              program = "${pkgs.writeShellScript "server" "exec ${pkgs.bash}/bin/bash ${./apply.sh} server"}";
+            };
           }
         );
 
@@ -130,6 +157,12 @@
       # builds whether it's x86_64 (CX/CPX) or aarch64 (CAX): use the matching name.
       homeConfigurations.${username} = homeMain;
       homeConfigurations."${username}-aarch64" = homeArm;
+
+      # Headless server env (apply: nix run .#server, or from the homelab repo's
+      # Ansible dotfiles role). Same core shell/tools/theme as above, minus the
+      # desktop layer — see home/server.nix for exactly what that drops.
+      homeConfigurations."${serverUser}-server" = serverMain;
+      homeConfigurations."${serverUser}-server-aarch64" = serverArm;
 
       # WSL2 (roadmap) — full NixOS-in-WSL, not standalone home-manager. Sketch;
       # add `inputs.nixos-wsl.url = "github:nix-community/NixOS-WSL/main";` then:

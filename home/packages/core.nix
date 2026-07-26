@@ -1,4 +1,6 @@
-# Cross-platform CLI tools + runtimes (nixpkgs), shared by macOS + Linux.
+# Portable CLI core (nixpkgs) — every profile gets this: macOS, Linux desktop,
+# and the headless server. Nothing here assumes a GUI, a display server, or a
+# container runtime; anything that does lives in packages/workstation.nix.
 # Client tools (kubectl, terraform, …) never here — those go in devenv.sh.
 { pkgs, lib, ... }:
 {
@@ -37,25 +39,17 @@
       comma
       nix-index # `, <cmd>` runs any nixpkg uninstalled (run `nix-index` once)
 
-      # dev runtimes / build (language runtimes live per-client in devenv.sh)
+      # build toolchain (language runtimes are workstation-only — see workstation.nix)
       gcc
-      nodejs_24
-      bun
-      pnpm
       tree-sitter
-      devenv # per-client reproducible shells (devenv.sh) + direnv
 
       # editor (tmux comes from programs.tmux — see home/tmux.nix)
       neovim
 
-      # system / disk / containers
+      # system / disk
       dust
       duf
       gping
-      lazydocker
-      docker # CLI + engine client (`docker`, talks to the colima VM on macOS)
-      docker-compose
-      colima # rootless Linux VM backing docker on macOS — replaces Docker Desktop (`colima start`)
 
       # data / http / net
       jq
@@ -64,7 +58,6 @@
       yq-go
       httpie
       xh # fast curl/httpie alternative — simpler syntax, HTTP/2
-      posting # API client TUI — terminal Postman (`posting`)
       doggo
       trippy # `trip` — interactive traceroute (replaces ping/traceroute)
       bandwhich # live per-process network usage (replaces iftop/nethogs)
@@ -91,26 +84,13 @@
       fastfetch
       glow
       gum
-      hackernews-tui # Hacker News reader TUI (alias: hn)
-      bagels # expense tracker TUI — `bagels`
-      harlequin # SQL IDE for the terminal — `harlequin`
-      cloudlens # k9s-like TUI for browsing AWS/GCP resources — `cloudlens`
 
       # recording
       asciinema
-
-      # media (transcode/convert helpers in functions.zsh)
-      ffmpeg
-      imagemagick
-      yt-dlp # video/audio downloader — YouTube + 1000s of sites (`yt-dlp <url>`)
-
-      # GUI apps from nixpkgs
-      _1password-cli # `op` CLI
-      wezterm # terminal
-      zed-editor # editor (CLI: zeditor)
     ]
-    # bat/btop: raw packages here on macOS (raw configs in dotfiles.nix); on Linux
-    # they come via programs.bat/btop instead so catppuccin themes them (linux.nix).
+    # bat/btop: raw packages here on macOS (raw configs in dotfiles/core.nix); on
+    # Linux they come via programs.bat/btop instead so catppuccin themes them
+    # (home/theme-mocha.nix) — that applies to the desktop and the server alike.
     ++ lib.optionals stdenv.hostPlatform.isDarwin [
       bat
       btop

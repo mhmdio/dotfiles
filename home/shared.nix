@@ -1,5 +1,7 @@
-# Portable user core (home-manager), shared by the Mac (via darwin.nix) and a
-# standalone Linux run. `username` comes from flake.nix so the repo is fork-and-go.
+# Portable user core (home-manager) — the floor every profile stands on:
+# workstation.nix (Mac + Linux desktop) and server.nix (headless) both import it.
+# Keep it GUI-free; desktop-only additions belong in the workstation layer.
+# `username` comes from flake.nix so the repo is fork-and-go.
 {
   config,
   pkgs,
@@ -10,8 +12,8 @@
 }:
 {
   imports = [
-    ./packages.nix
-    ./dotfiles.nix
+    ./packages/core.nix
+    ./dotfiles/core.nix
     ./tmux.nix
   ];
 

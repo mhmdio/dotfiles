@@ -5,6 +5,7 @@
 #
 #   nix run .#mac       # sudo darwin-rebuild switch --flake .#mac
 #   nix run .#linux     # home-manager switch --flake .#<user> -b backup
+#   nix run .#server    # …headless profile, .#<serverUser>-server
 #   ./apply.sh mac      # …the same, invoked directly
 #
 # Pure-bash framing (header / steps / result); nix-output-monitor (nom) renders
@@ -95,7 +96,21 @@ case "$PLATFORM" in
     rule
     ok "activated  ${B}.#${TARGET}${R}"
     ;;
+  server)
+    # Headless profile — core packages + Mocha, no desktop layer. The account is
+    # the flake's `serverUser` (a remote service account), NOT username.nix, so
+    # read it back from flake.nix rather than duplicating the literal here.
+    TARGET="$(sed -n 's/^[[:space:]]*serverUser[[:space:]]*=[[:space:]]*"\(.*\)".*/\1/p' flake.nix 2>/dev/null | head -1)"
+    [ -n "$TARGET" ] || die "could not read serverUser from flake.nix"
+    TARGET="${TARGET}-server"
+    case "$(uname -m)" in aarch64 | arm64) TARGET="${TARGET}-aarch64" ;; esac
+    step "apply  .#${TARGET}   ·   home-manager switch"
+    run_with_progress quiet home-manager switch --flake ".#${TARGET}" -b backup \
+      || die "switch failed — see the build log above" "$?"
+    rule
+    ok "activated  ${B}.#${TARGET}${R}"
+    ;;
   *)
-    die "usage: ./apply.sh <mac|linux>"
+    die "usage: ./apply.sh <mac|linux|server>"
     ;;
 esac
