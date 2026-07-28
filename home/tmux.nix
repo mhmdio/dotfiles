@@ -33,31 +33,36 @@ let
         # Same claude-version-as-a-name substitution as automatic-rename-format in
         # tmux.conf — it fixes new renames, not names already on old windows.
         name_fmt="#{s|^[0-9][0-9.]*$|claude|:%s}"
+        # #{E:@icon} is the status bar's own glyph table (defined once in
+        # tmux.conf): the preview reads it back instead of restating the mapping,
+        # so nvim/yazi/lazygit wear the same icon here as they do up there.
         windows="$(tmux list-windows -t "=$sess" \
-          -F "#{window_index}''${TAB}''${name_fmt/\%s/window_name}''${TAB}#{window_active}''${TAB}#{window_panes}" \
+          -F "#{window_index}''${TAB}''${name_fmt/\%s/window_name}''${TAB}#{window_active}''${TAB}#{window_panes}''${TAB}#{E:@icon}" \
           2>/dev/null || true)"
-        while IFS="$TAB" read -r idx wname wactive wpanes; do
+        while IFS="$TAB" read -r idx wname wactive wpanes wicon; do
           [ -n "$idx" ] || continue
           mark="  "
           if [ "$wactive" = 1 ]; then mark=$'\033[34m▸\033[0m '; fi
           panes="$(tmux list-panes -t "=$sess:$idx" \
-            -F "#{pane_index}''${TAB}''${name_fmt/\%s/pane_current_command}''${TAB}#{pane_current_path}''${TAB}#{pane_active}" \
+            -F "#{pane_index}''${TAB}''${name_fmt/\%s/pane_current_command}''${TAB}#{pane_current_path}''${TAB}#{pane_active}''${TAB}#{E:@icon}" \
             2>/dev/null || true)"
           # A one-pane window IS its pane — fold the path up onto the window line
           # instead of repeating the command under it. Only splits get a list.
+          # The icon sits outside the padded field: padding counts characters, and
+          # a glyph the terminal draws two columns wide would skew the column.
           if [ "$wpanes" = 1 ]; then
             IFS="$TAB" read -r _ _ ppath _ <<< "$panes"
-            printf '%s\033[1m%-16s\033[0m \033[2m%s\033[0m\n' "$mark" "$idx: $wname" "''${ppath/#$HOME/\~}"
+            printf '%s%s \033[1m%-14s\033[0m \033[2m%s\033[0m\n' "$mark" "$wicon" "$idx: $wname" "''${ppath/#$HOME/\~}"
             continue
           fi
-          printf '%s\033[1m%-16s\033[0m \033[2m%s panes\033[0m\n' "$mark" "$idx: $wname" "$wpanes"
-          while IFS="$TAB" read -r pidx pcmd ppath pactive; do
+          printf '%s%s \033[1m%-14s\033[0m \033[2m%s panes\033[0m\n' "$mark" "$wicon" "$idx: $wname" "$wpanes"
+          while IFS="$TAB" read -r pidx pcmd ppath pactive picon; do
             [ -n "$pidx" ] || continue
             short="''${ppath/#$HOME/\~}"
             if [ "$pactive" = 1 ]; then
-              printf '     \033[34m%s\033[0m %-12s \033[2m%s\033[0m\n' "$pidx" "$pcmd" "$short"
+              printf '     \033[34m%s\033[0m %s %-10s \033[2m%s\033[0m\n' "$pidx" "$picon" "$pcmd" "$short"
             else
-              printf '     \033[2m%s %-12s %s\033[0m\n' "$pidx" "$pcmd" "$short"
+              printf '     \033[2m%s %s %-10s %s\033[0m\n' "$pidx" "$picon" "$pcmd" "$short"
             fi
           done <<< "$panes"
         done <<< "$windows"
@@ -141,7 +146,7 @@ let
         # only — hence no quotes of our own around it.
         target="$(
           printf '%s' "$list" | fzf --ansi --reverse --border=none \
-            --prompt='  ' --pointer='▶' \
+            --prompt='  ' --pointer='▶' \
             --delimiter="$TAB" --with-nth=2 --nth=2 \
             --preview "$self --preview {1}" \
             --preview-window='right,55%,border-left' \
@@ -236,7 +241,7 @@ in
         plugin = cpu;
         extraConfig = ''
           set -g status-right-length 60
-          set -g status-right "#[fg=blue] #[fg=default]#{cpu_percentage}  #[fg=blue] #[fg=default]#{ram_percentage}  #[fg=blue] #[fg=default]#(df -h / | awk 'NR==2{print $5}')  "
+          set -g status-right "#[fg=blue] #[fg=default]#{cpu_percentage}  #[fg=blue] #[fg=default]#{ram_percentage}  #[fg=blue] #[fg=default]#(df -h / | awk 'NR==2{print $5}')  "
         '';
       }
       {

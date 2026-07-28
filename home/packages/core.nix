@@ -2,6 +2,9 @@
 # and the headless server. Nothing here assumes a GUI, a display server, or a
 # container runtime; anything that does lives in packages/workstation.nix.
 # Client tools (kubectl, terraform, …) never here — those go in devenv.sh.
+#
+# The claude CLI is deliberately absent: it stays on its own installer so it
+# self-updates, instead of being frozen until the next `make update` + apply.
 { pkgs, lib, ... }:
 {
   home.packages =
