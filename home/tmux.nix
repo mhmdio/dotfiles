@@ -68,6 +68,53 @@ let
         done <<< "$windows"
         exit 0
       fi
+      # `--popup` measures the picker and only then opens it. display-popup takes
+      # fixed -w/-h, so a static binding has to guess, and 70%x75% of a tall
+      # window is a lot of empty frame behind three sessions. The height is the
+      # taller of the two columns — one row per session on the left, one per
+      # window (plus its panes, when split) on the right. Width is a flat 96, which
+      # fits a session line beside the preview without sprawling on a wide display.
+      if [ "''${1:-}" = "--popup" ]; then
+        # run-shell has no "current client" of its own, so the binding hands us the
+        # client's tty and every lookup here is scoped to it with -c. Without that
+        # the whole branch dies on "no current client" and the key silently does
+        # nothing.
+        client="''${2:-}"
+        copt=()
+        if [ -n "$client" ]; then copt=(-c "$client"); fi
+        cur="$(tmux display-message "''${copt[@]}" -p '#S' 2>/dev/null || true)"
+        rows=0
+        preview=0
+        while IFS="$TAB" read -r pname; do
+          if [ -z "$pname" ] || [ "$pname" = "$cur" ]; then continue; fi
+          rows=$((rows + 1))
+          h=0
+          while read -r np; do
+            [ -n "$np" ] || continue
+            h=$((h + 1))
+            if [ "$np" -gt 1 ]; then h=$((h + np)); fi
+          done <<< "$(tmux list-windows -t "=$pname" -F '#{window_panes}' 2>/dev/null || true)"
+          if [ "$h" -gt "$preview" ]; then preview=$h; fi
+        done <<< "$(tmux list-sessions -F '#{session_name}' 2>/dev/null || true)"
+
+        content=$rows
+        if [ "$preview" -gt "$content" ]; then content=$preview; fi
+        if [ "$content" -lt 3 ]; then content=3; fi
+
+        cw="$(tmux display-message "''${copt[@]}" -p '#{client_width}')"
+        ch="$(tmux display-message "''${copt[@]}" -p '#{client_height}')"
+        # chrome: two borders + prompt + its rule + the footer and its rule
+        height=$((content + 6))
+        max_h=$((ch - 6))
+        if [ "$height" -gt "$max_h" ]; then height=$max_h; fi
+        width=96
+        max_w=$((cw - 8))
+        if [ "$width" -gt "$max_w" ]; then width=$max_w; fi
+
+        tmux display-popup "''${copt[@]}" -E -w "$width" -h "$height" -b rounded -S "fg=blue" \
+          -T "  sessions " "tmux-sessionizer"
+        exit 0
+      fi
 
       current=""
       if [ -n "''${TMUX:-}" ]; then
@@ -90,12 +137,12 @@ let
           elif [ "$age" -lt 86400 ]; then when="$((age / 3600))h ago"
           else when="$((age / 86400))d ago"; fi
           if [ "$attached" -gt 0 ]; then
-            dot=$'\033[1;32m●\033[0m' state=$'\033[32mattached\033[0m'
+            dot=$'\033[1;32m●\033[0m'
           else
-            dot=$'\033[1;34m○\033[0m' state=$'\033[2mdetached\033[0m'
+            dot=$'\033[1;34m○\033[0m'
           fi
-          printf '%s\t%s \033[1m%-18s\033[0m \033[2m%2s win\033[0m  %s \033[2m· %s\033[0m\n' \
-            "$name" "$dot" "$name" "$windows" "$state" "$when"
+          printf '%s\t%s \033[1m%-16s\033[0m \033[2m%2s win · %s\033[0m\n' \
+            "$name" "$dot" "$name" "$windows" "$when"
         done <<< "$sessions"
       }
 
@@ -145,13 +192,13 @@ let
         # arrives as tmux's exact-match `=name` with the quotes around the name
         # only — hence no quotes of our own around it.
         target="$(
-          printf '%s' "$list" | fzf --ansi --reverse --border=none \
+          printf '%s' "$list" | fzf --ansi --reverse --border=none --height=100% --gutter=' ' \
             --prompt='  ' --pointer='▶' \
             --delimiter="$TAB" --with-nth=2 --nth=2 \
             --preview "$self --preview {1}" \
-            --preview-window='right,55%,border-left' \
+            --preview-window='right,48%,border-left' \
             --input-border=bottom --footer-border=top \
-            --footer='  ↑↓ move   ↵ attach   ^x kill   ^/ preview   esc quit' \
+            --footer='  ↵ attach · ^x kill · ^/ preview · esc' \
             --color='footer:8,footer-border:8,input-border:8,preview-border:8' \
             --bind="ctrl-x:execute($self --kill {1})+reload($self --list)" \
             --bind='ctrl-j:down,ctrl-k:up' \
