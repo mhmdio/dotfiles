@@ -17,7 +17,7 @@
 
 ![A short showcase of the themed terminal — fastfetch, eza tree, bat](.github/demo.gif)
 
-> Recorded with [vhs](https://github.com/charmbracelet/vhs); regenerate with `nix run .#demo`.
+> Recorded with [vhs](https://github.com/charmbracelet/vhs); regenerate with `make demo`.
 
 ## Architecture
 
@@ -106,9 +106,9 @@ flowchart LR
 
 | Profile | Apply with | Flake output |
 |---|---|---|
-| `home/darwin.nix` | `nix run .#mac` | `darwinConfigurations.mac` |
-| `home/linux.nix` | `nix run .#linux` | `homeConfigurations.<you>` · `<you>-aarch64` |
-| `home/server.nix` | `nix run .#server` | `homeConfigurations.<serverUser>-server` · `-aarch64` |
+| `home/darwin.nix` | `make apply` (`nix run .#mac`) | `darwinConfigurations.mac` |
+| `home/linux.nix` | `make apply` (`nix run .#linux`) | `homeConfigurations.<you>` · `<you>-aarch64` |
+| `home/server.nix` | `nix run .#server` — no make target | `homeConfigurations.<serverUser>-server` · `-aarch64` |
 
 The headless profile importing `shared.nix` **directly** is the whole
 distinction — no WezTerm/Zed/1Password, no colima VM, no node/bun/pnpm, no media
@@ -124,7 +124,7 @@ built for `x86_64` and `aarch64`, so a Hetzner box works whichever it is.
 - **Nix-first** — every CLI and runtime from nixpkgs (unstable, latest versions); Homebrew only for GUI `.app`s nixpkgs lacks.
 - **Dotfiles as code** — `~/.config/*` are read-only symlinks from the repo (nvim & Zed kept granular so they keep their own state; WezTerm is copied rather than linked, so its own config watcher still fires).
 - **Theme follows the OS** — Catppuccin Mocha (dark) / Latte (light); no switcher, no rebuild.
-- **One-line tool changes** — add or remove a name in a single file, then re-apply.
+- **One-line tool changes** — add or remove a name in a single file, then `make apply`.
 - **Forkable** — the account is auto-detected; just swap the cask list and it's yours.
 - **Client tools stay out** — kubectl/terraform/awscli live per-client in [devenv.sh](https://devenv.sh), never here.
 
@@ -180,7 +180,7 @@ dotfiles/
 ├── username.nix          # the account to build for (stamped by bootstrap)
 ├── bootstrap.sh          # one command on a fresh machine, macOS or Linux
 ├── apply.sh              # rebuild wrapper behind `nix run .#mac|linux|server` — nom + nvd
-├── Makefile              # task shortcuts: make apply · build · diff · update · lint
+├── Makefile              # ← the entry point: make apply · home · update · diff · check
 ├── statix.toml           # Nix lint config (nix flake check)
 ├── nix/lib.nix           # flake helpers: mkDarwin · mkHome · lint · fmt
 ├── hosts/mac.nix         # macOS system layer + GUI casks
@@ -240,44 +240,100 @@ curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh |
 casks/taps elsewhere (`wezterm`, `_1password-cli`, `maple-mono`, the
 `zed-editor` app). Only GUI apps with no good nixpkgs build remain on brew.
 
-### Daily use
+### Daily use — `make`
 
-`nix run .#mac` / `.#linux` drive `apply.sh`, which stages tracked files for you
-(flakes only see them) and shows the live build tree via
-[nix-output-monitor](https://github.com/maralorn/nix-output-monitor); the build
-log stays on screen (failed switches stay debuggable), and on macOS it prints an
-`nvd` diff of what changed afterwards. Everything else is a plain Nix command.
+**`make` is the interface.** Every target auto-detects macOS vs Linux, so the same
+command works on either. Run `make` on its own for the list.
 
 ```bash
-# macOS
-nix run .#mac      # apply.sh mac → sudo darwin-rebuild switch --flake .#mac
-nix build --dry-run .#darwinConfigurations.mac.system   # evaluate, don't apply
-
-# Linux
-nix run .#linux    # apply.sh linux → home-manager switch --flake .#<you> -b backup
-
-# Headless (also what the homelab repo's Ansible dotfiles role runs)
-nix run .#server   # apply.sh server → home-manager switch --flake .#<serverUser>-server
-
-# native nix — run from anywhere
-nix flake check    # lint + a real build of each config
-nix fmt            # format every .nix file (nixfmt)
-nix flake update   # bump flake.lock
-nix run .#demo     # re-record the showcase gif (vhs · macOS only)
+make            # list every target (with the detected host)
+make apply      # ← the one you want: build + activate this host
+make home       # dotfiles / shell / tmux / nvim only — no sudo, seconds not minutes
+make update     # bump EVERYTHING pinned (see below)
 ```
 
-### nh — daily driver (Homebrew muscle-memory → Nix)
+**`make apply` vs `make home`** is the distinction worth internalising. home-manager
+is a nix-darwin module here, so a full `apply` needs root — but only for the system
+half: `/etc`, launchd, macOS defaults, and the per-user *package* profile (which
+`useUserPackages` puts in `/etc/profiles/per-user`). Editing a dotfile touches none
+of that, so `make home` re-activates just the user layer with no sudo and no wait.
+It runs the very same activation script nix-darwin would exec, read out of the
+darwin config — not a parallel `homeConfigurations` output that could drift from it.
+New **packages, casks, macOS defaults or launchd agents still need `make apply`**.
 
-[`nh`](https://github.com/nix-community/nh) is a friendly front-end for the
-build / search / garbage-collect loop (nom progress + a generation diff built
-in). It's the closest thing to a daily `brew` replacement:
+**`make update` does more than `nix flake update`.** Three pin sets move together,
+and all three land in `git diff` next to each other:
+
+| | |
+|---|---|
+| `flake.lock` | nixpkgs · nix-darwin · home-manager |
+| `home/config/nvim/lazy-lock.json` | via `nvim --headless '+Lazy! update'` |
+| `home/config/yazi/` plugins | vendored in-repo, via `ya pkg upgrade` |
+
+Reaching for `nix flake update` by hand silently skips the last two, and they drift
+quietly. Narrow it with `make update I=nixpkgs` — naming a single input updates
+*only* that input and deliberately skips the plugin pass.
+
+| Inspect | |
+|---|---|
+| `make diff` | build, then `nvd` what would change vs the running system — **the pre-flight for `apply`** |
+| `make build` | build without activating (leaves `./result`) |
+| `make generations` | list past generations |
+| `make check` | `nix flake check` — statix lint + a real build of every config |
+| `make lint` · `make fmt` | fast statix check, no build · format every `.nix` (nixfmt) |
+
+| Recover / reclaim | |
+|---|---|
+| `make rollback` | activate the previous generation (macOS) |
+| `make gc` | drop old generations, collect garbage, optimise the store |
+| `make cleanup` | `gc` **plus** docker prune and go/brew/yarn caches |
+| `make clean` | just remove `./result` symlinks |
+
+| Setup | |
+|---|---|
+| `make bootstrap` | fresh machine / full re-provision (`./bootstrap.sh`) |
+| `make demo` | re-record the README showcase gif (vhs · macOS) |
+
+Plus three you rarely type: `make help` (what bare `make` runs), `make switch`
+(alias for `apply`), and `make mac` / `make linux` — the same thing as `apply`
+with the host pinned instead of detected.
+
+<details>
+<summary>What <code>make apply</code> is wrapping</summary>
+
+The targets are thin wrappers, so the flake apps stay the source of truth — reach
+for these when you want to be explicit, or on a box where `make apply` would guess
+wrong (a headless server auto-detects as `linux`, which is the *desktop* profile —
+use `nix run .#server` there).
+
+```bash
+nix run .#mac      # apply.sh mac    → sudo darwin-rebuild switch --flake .#mac
+nix run .#linux    # apply.sh linux  → home-manager switch --flake .#<you> -b backup
+nix run .#server   # apply.sh server → home-manager switch --flake .#<serverUser>-server
+nix run .#demo     # re-record the showcase gif (vhs · macOS only)
+
+nix build --dry-run .#darwinConfigurations.mac.system   # evaluate, don't apply
+```
+
+`apply.sh` stages tracked files for you (flakes only see them), shows the live build
+tree via [nix-output-monitor](https://github.com/maralorn/nix-output-monitor), keeps
+the build log on screen so a failed switch stays debuggable, and on macOS prints an
+`nvd` diff of what changed afterwards.
+
+</details>
+
+### nh — optional, for Homebrew muscle-memory
+
+`make` covers the daily loop; [`nh`](https://github.com/nix-community/nh) is a
+friendly front-end for the same build / search / garbage-collect operations (nom
+progress + a generation diff built in), handy while `brew` reflexes fade:
 
 | Homebrew | here |
 |---|---|
 | `brew install foo` | add `foo` to `home/packages/core.nix` → `nh darwin switch` |
 | `brew uninstall foo` | remove it from `home/packages/core.nix` → `nh darwin switch` |
 | `brew search foo` | `nh search foo` |
-| `brew upgrade` | `nix flake update` (bump `flake.lock`) → `nh darwin switch` |
+| `brew upgrade` | **`make update`** — flake.lock *plus* the nvim/yazi plugin pins |
 | `brew cleanup` (+ autoremove) | `nh clean all` |
 
 Point `nh` at this repo once so the subcommands need no path argument:
@@ -293,7 +349,7 @@ nh clean all         # garbage-collect old generations + the store
 ```
 
 Two caveats: `nh` doesn't stage files, so run `git add -A` first (flakes only see
-tracked files — `nix run .#mac` does this for you); and **GUI apps still come from
+tracked files — `make apply` does this for you); and **GUI apps still come from
 Homebrew casks** (declared in `hosts/mac.nix`) — `nh`/Nix manage the
 CLI/Nix side, not casks.
 
@@ -313,7 +369,7 @@ This is meant to be a one-line change.
   `home/dotfiles/core.nix` (or `dotfiles/workstation.nix` for desktop-only,
   `home/darwin.nix` for macOS-only).
 
-Then re-apply (`nix run .#mac` / `.#linux`). Search names at
+Then `make apply` (or `make home` if it was only a dotfile). Search names at
 [search.nixos.org/packages](https://search.nixos.org/packages).
 
 </details>
@@ -610,10 +666,10 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd 
 - **Scope = your daily tools only.** Per-client CLIs are out of scope by design —
   they belong in [devenv.sh](https://devenv.sh) shells, not here.
 - **Homebrew casks are declarative** (zap-prune on activation) — a cask installed by
-  hand but not added to `hosts/mac.nix` is removed on the next `nix run .#mac`.
+  hand but not added to `hosts/mac.nix` is removed on the next `make apply`.
 - **Wallpaper** — shuffled from `wallpaper/mac/` on every switch, at login, and hourly
   (`wallpaper-shuffle`, a launchd agent; run it by hand to reroll). The first
-  `nix run .#mac` may prompt to allow controlling System Events so it can set the
+  `make apply` may prompt to allow controlling System Events so it can set the
   desktop picture — approve once.
 
 </details>
