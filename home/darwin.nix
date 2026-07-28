@@ -1,20 +1,50 @@
 # macOS-only home layer: imports the workstation profile + macOS GUI configs.
 # The Linux homeConfigurations import that profile directly and never see this.
 { pkgs, lib, ... }:
+let
+  # Picks one wallpaper from the collection and sets it. Each file is a DYNAMIC
+  # heic — two images plus an XMP apple_desktop:apr map of {l:0, d:1} (verified on
+  # all six) — so macOS still swaps light/dark inside whichever one is showing.
+  # That's why only the Mac "Dynamic" download is wired up: the separate
+  # light/dark PNGs would each need their own switching logic to do the same job.
+  wallpaper-shuffle = pkgs.writeShellApplication {
+    name = "wallpaper-shuffle";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      # The store path is the whole point: its hash changes when the collection
+      # does, and macOS caches wallpapers BY PATH, so a new generation is never
+      # served a stale image (see also the parent-directory trick in git log).
+      pick="$(find "${../wallpaper/mac}" -name '*.heic' -type f | shuf -n 1)"
+      [ -n "$pick" ] || exit 0
+      # || true: a switch must not fail because System Events is unapproved. The
+      # first run raises an Automation permission prompt.
+      /usr/bin/osascript -e "tell application \"System Events\" to tell every desktop to set picture to \"$pick\"" || true
+    '';
+  };
+in
 {
   imports = [ ./workstation.nix ];
 
-  home.packages = [ pkgs.mas ]; # Mac App Store CLI
+  home.packages = [
+    pkgs.mas # Mac App Store CLI
+    wallpaper-shuffle # also runnable by hand to reroll the wallpaper
+  ];
 
   xdg.configFile."karabiner/karabiner.json".source = ./config/karabiner/karabiner.json;
 
-  # Wallpaper: dynamic .heic (Latte/Mocha) macOS switches with the appearance. Point
-  # at the file via its store DIRECTORY: the changing hash sits on the parent path so
-  # macOS reloads instead of caching, while the name it shows stays a clean
-  # "catppuccin" (not the hash). First run may prompt to allow System Events.
+  # Wallpaper: shuffled from wallpaper/mac on every switch, and hourly after that.
+  # Both paths call the same script, so there is one definition of "pick one".
   home.activation.wallpaper = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    run /usr/bin/osascript -e 'tell application "System Events" to tell every desktop to set picture to "${./assets}/catppuccin.heic"' || true
+    run ${wallpaper-shuffle}/bin/wallpaper-shuffle || true
   '';
+  launchd.agents.wallpaper-shuffle = {
+    enable = true;
+    config = {
+      ProgramArguments = [ "${wallpaper-shuffle}/bin/wallpaper-shuffle" ];
+      RunAtLoad = true; # reroll at login
+      StartInterval = 3600; # and once an hour while logged in
+    };
+  };
 
   # Free ⌘Space for Raycast: disable Spotlight's hotkeys (search = 64, Finder
   # search window = 65). -dict-add edits only those keys, preserving every other

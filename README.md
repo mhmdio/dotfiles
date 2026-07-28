@@ -570,5 +570,20 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd 
 
 **Theme**
 - [Catppuccin](https://catppuccin.com) — the Mocha/Latte palette every tool follows
+- [BasicAppleGuy](https://basicappleguy.com) — the *Topographic Amoeba* wallpapers in `wallpaper/`
+
+</details>
+
+<details>
+<summary><h2>Thanks</h2></summary>
+
+- **[BasicAppleGuy](https://basicappleguy.com)** for the
+  [*Topographic Amoeba*](https://basicappleguy.com/basicappleblog/topographic-amoeba)
+  collection in [`wallpaper/`](wallpaper) — six wallpapers offered free and in full
+  resolution. The Mac files are dynamic HEICs, so each one carries its own light and
+  dark image and macOS swaps between them with the system appearance; `wallpaper-shuffle`
+  just picks which of the six is up. If you use them, consider
+  [supporting the work](https://basicappleguy.com/basicappleblog/topographic-amoeba).
+- **[Catppuccin](https://catppuccin.com)** for the palette every tool in here follows.
 
 </details>
