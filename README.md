@@ -23,6 +23,7 @@
 
 Each layer **depends on the layer below it**. macOS gets the full stack; Linux
 takes the same Nix → home-manager path and simply skips the macOS-only layer.
+A headless box stops one layer earlier still — see [Profiles](#profiles) below.
 
 ```mermaid
 flowchart BT
@@ -63,13 +64,65 @@ flowchart BT
     linkStyle 3 stroke:#40a02b,stroke-width:2px,stroke-dasharray:6 4;
 ```
 
+### Profiles
+
+The home-manager layer is **three entry points over one shared core**, so the
+same shell, keybinds and dotfiles land on a laptop and on a server the size of a
+CAX11. Where you add a package decides how far it travels:
+
+```mermaid
+flowchart LR
+    SH["`**shared.nix**
+    portable core — zsh · git · CLIs
+    packages/core.nix · dotfiles/core.nix`"]
+    WS["`**workstation.nix**
+    + desktop layer
+    packages/workstation.nix · dotfiles/workstation.nix`"]
+    MAC["`**darwin.nix** — macOS
+    GUI configs · wallpaper`"]
+    LIN["`**linux.nix** — Linux desktop
+    + Catppuccin Mocha`"]
+    SRV["`**server.nix** — headless
+    + Mocha · lazydocker`"]
+
+    SH  --> WS
+    WS  --> MAC
+    WS  --> LIN
+    SH  -.-> SRV
+
+    classDef core   fill:#dce0fb,stroke:#1e66f5,stroke-width:3px,color:#1e66f5;
+    classDef desk   fill:#f0e2fd,stroke:#8839ef,stroke-width:3px,color:#8839ef;
+    classDef leaf   fill:#eff1f5,stroke:#6c6f85,stroke-width:2px,color:#4c4f69;
+    classDef server fill:#e0f2db,stroke:#40a02b,stroke-width:3px,color:#40a02b;
+
+    class SH core;
+    class WS desk;
+    class MAC,LIN leaf;
+    class SRV server;
+
+    linkStyle 0,1,2 stroke:#9ca0b0,stroke-width:2px;
+    linkStyle 3 stroke:#40a02b,stroke-width:2px,stroke-dasharray:6 4;
+```
+
+| Profile | Apply with | Flake output |
+|---|---|---|
+| `home/darwin.nix` | `nix run .#mac` | `darwinConfigurations.mac` |
+| `home/linux.nix` | `nix run .#linux` | `homeConfigurations.<you>` · `<you>-aarch64` |
+| `home/server.nix` | `nix run .#server` | `homeConfigurations.<serverUser>-server` · `-aarch64` |
+
+The headless profile importing `shared.nix` **directly** is the whole
+distinction — no WezTerm/Zed/1Password, no colima VM, no node/bun/pnpm, no media
+toolchain. Adding a tool to `packages/workstation.nix` therefore never grows the
+server closure; you opt in from `server.nix`, on purpose. Both Linux profiles are
+built for `x86_64` and `aarch64`, so a Hetzner box works whichever it is.
+
 <details>
 <summary><h2>Features</h2></summary>
 
 - **One command, reproducible** — `bootstrap.sh` brings up the whole machine; idempotent and safe to re-run.
-- **Cross-platform, one config** — identical CLI environment on macOS and non-NixOS Linux; Linux just skips the macOS GUI layer.
+- **Cross-platform, one config** — identical CLI environment on macOS, non-NixOS Linux, and headless servers; each profile just stops at a different layer.
 - **Nix-first** — every CLI and runtime from nixpkgs (unstable, latest versions); Homebrew only for GUI `.app`s nixpkgs lacks.
-- **Dotfiles as code** — `~/.config/*` are read-only symlinks from the repo (nvim & Zed kept granular so they keep their own state).
+- **Dotfiles as code** — `~/.config/*` are read-only symlinks from the repo (nvim & Zed kept granular so they keep their own state; WezTerm is copied rather than linked, so its own config watcher still fires).
 - **Theme follows the OS** — Catppuccin Mocha (dark) / Latte (light); no switcher, no rebuild.
 - **One-line tool changes** — add or remove a name in a single file, then re-apply.
 - **Forkable** — the account is auto-detected; just swap the cask list and it's yours.
@@ -126,20 +179,23 @@ dotfiles/
 ├── flake.lock            # pinned
 ├── username.nix          # the account to build for (stamped by bootstrap)
 ├── bootstrap.sh          # one command on a fresh machine, macOS or Linux
-├── apply.sh              # rebuild wrapper behind `nix run .#mac|linux` — nom + nvd
+├── apply.sh              # rebuild wrapper behind `nix run .#mac|linux|server` — nom + nvd
 ├── Makefile              # task shortcuts: make apply · build · diff · update · lint
 ├── statix.toml           # Nix lint config (nix flake check)
 ├── nix/lib.nix           # flake helpers: mkDarwin · mkHome · lint · fmt
 ├── hosts/mac.nix         # macOS system layer + GUI casks
+├── wallpaper/            # mac/ dynamic .heic (shuffled) + iphone/ png
 ├── .github/              # demo (tape + gif) + CI (lint/fmt on push)
 └── home/
-    ├── shared.nix        # portable user core (zsh, direnv) — used by mac + linux
-    ├── darwin.nix        # macOS-only layer: imports shared + GUI configs
-    ├── linux.nix         # Linux-only layer: shared core + catppuccin theming
-    ├── packages.nix      # nixpkgs CLI tools + runtimes + GUI editors
+    ├── shared.nix        # portable user core (zsh, direnv) — the floor every profile stands on
+    ├── workstation.nix   # shared + the desktop layer — imported by mac AND linux
+    ├── darwin.nix        # macOS entry point: workstation + GUI configs + wallpaper
+    ├── linux.nix         # Linux desktop entry point: workstation + Mocha
+    ├── server.nix        # headless entry point: shared + Mocha, no desktop weight
+    ├── theme-mocha.nix   # catppuccin/nix Mocha — Linux side only; the Mac autoswitches
     ├── tmux.nix          # tmux via programs.tmux (plugins · status · sessions)
-    ├── dotfiles.nix      # cross-platform dotfiles → read-only ~/.config symlinks
-    ├── assets/           # wallpaper (catppuccin.heic)
+    ├── packages/         # nixpkgs tools — core.nix (everywhere) + workstation.nix (desktop)
+    ├── dotfiles/         # → read-only ~/.config symlinks, split the same core/workstation way
     └── config/           # the actual dotfiles (shell/ nvim/ zed/ wezterm/ …)
 ```
 
@@ -157,6 +213,10 @@ curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh |
 
 - **macOS** → Xcode CLT → Lix → Homebrew → clone → `darwin-rebuild switch`
 - **Linux** (non-NixOS) → Lix → clone → `home-manager switch` (no system layer; the switch needs no sudo, though installing Lix + enrolling a trusted user does)
+- **Headless** → *not* this script. Once Lix and the clone exist, the no-desktop
+  profile is `nix run .#server` — normally driven by the homelab repo's Ansible
+  dotfiles role, not by hand. (Running `bootstrap.sh` on a server would apply the
+  *desktop* Linux profile, which is exactly the weight `server.nix` exists to avoid.)
 
 </details>
 
@@ -167,11 +227,12 @@ curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh |
 
 | Concern | Managed by |
 |---|---|
-| CLI tools + JS runtimes (node/bun) + GUI editors (Zed, WezTerm) | **nixpkgs** — `home/packages.nix` |
+| CLI tools everywhere, laptop or server | **nixpkgs** — `home/packages/core.nix` |
+| JS runtimes (node/bun) + GUI editors (Zed, WezTerm) — desktops only | **nixpkgs** — `home/packages/workstation.nix` |
 | zsh + plugins (autosuggestions, syntax-highlighting, fzf-tab), direnv | **home-manager** — `home/shared.nix` |
-| Dotfiles (`~/.config/*`) imported as read-only symlinks | **home-manager** — `home/dotfiles.nix` → `home/config/` |
+| Dotfiles (`~/.config/*`) imported as read-only symlinks | **home-manager** — `home/dotfiles/` → `home/config/` |
 | macOS defaults, fonts, the user, system zsh *(macOS only)* | **nix-darwin** — `hosts/mac.nix` |
-| macOS GUI configs (karabiner) | **home-manager** — `home/darwin.nix` |
+| macOS GUI configs (karabiner) + the shuffled wallpaper | **home-manager** — `home/darwin.nix` |
 | GUI `.app` casks (1Password, Chrome, Telegram, …) *(macOS only)* | **Homebrew**, driven declaratively by nix-darwin |
 | Per-client toolchains (kubectl, terraform, …) | **devenv.sh** — *never in this repo* |
 
@@ -195,6 +256,9 @@ nix build --dry-run .#darwinConfigurations.mac.system   # evaluate, don't apply
 # Linux
 nix run .#linux    # apply.sh linux → home-manager switch --flake .#<you> -b backup
 
+# Headless (also what the homelab repo's Ansible dotfiles role runs)
+nix run .#server   # apply.sh server → home-manager switch --flake .#<serverUser>-server
+
 # native nix — run from anywhere
 nix flake check    # lint + a real build of each config
 nix fmt            # format every .nix file (nixfmt)
@@ -210,8 +274,8 @@ in). It's the closest thing to a daily `brew` replacement:
 
 | Homebrew | here |
 |---|---|
-| `brew install foo` | add `foo` to `home/packages.nix` → `nh darwin switch` |
-| `brew uninstall foo` | remove it from `home/packages.nix` → `nh darwin switch` |
+| `brew install foo` | add `foo` to `home/packages/core.nix` → `nh darwin switch` |
+| `brew uninstall foo` | remove it from `home/packages/core.nix` → `nh darwin switch` |
 | `brew search foo` | `nh search foo` |
 | `brew upgrade` | `nix flake update` (bump `flake.lock`) → `nh darwin switch` |
 | `brew cleanup` (+ autoremove) | `nh clean all` |
@@ -240,11 +304,14 @@ runs any nixpkg without installing it (run `nix-index` once to build its index).
 
 This is meant to be a one-line change.
 
-- **A CLI or runtime** (any OS) → add/remove a name in `home/packages.nix`.
-- **A macOS-only CLI** → `home/darwin.nix`.
+- **A CLI you want everywhere**, servers included → `home/packages/core.nix`.
+- **A CLI or runtime for machines you sit at** → `home/packages/workstation.nix`
+  (Mac + Linux desktop; the headless profile never sees it).
+- **A macOS-only CLI** → `home/darwin.nix`. **Server-only** → `home/server.nix`.
 - **A macOS GUI `.app`** → add/remove a cask in `hosts/mac.nix`.
 - **A dotfile** → drop it in `home/config/<tool>/` and reference it in
-  `home/dotfiles.nix` (or `home/darwin.nix` for macOS-only configs).
+  `home/dotfiles/core.nix` (or `dotfiles/workstation.nix` for desktop-only,
+  `home/darwin.nix` for macOS-only).
 
 Then re-apply (`nix run .#mac` / `.#linux`). Search names at
 [search.nixos.org/packages](https://search.nixos.org/packages).
@@ -254,9 +321,11 @@ Then re-apply (`nix run .#mac` / `.#linux`). Search names at
 <details>
 <summary><h2>Packages</h2></summary>
 
-Optional reference — every tool in [`home/packages.nix`](home/packages.nix) with a
+Optional reference — every tool in [`home/packages/`](home/packages) with a
 one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). GUI
-`.app` casks: `homebrew.casks` in `hosts/mac.nix`.
+`.app` casks: `homebrew.casks` in `hosts/mac.nix`. Split across
+[`core.nix`](home/packages/core.nix) (everywhere) and
+[`workstation.nix`](home/packages/workstation.nix) (desktops only).
 
 **core shell / file utils**
 
@@ -428,22 +497,37 @@ Put your account in `username.nix`; it defaults to `mohammed`.)
 <details>
 <summary><h2>Theme</h2></summary>
 
-There is **no switcher command, no shell glue, and no custom theme files**. Each
-tool detects the terminal's background colour and autoswitches **Catppuccin**
-itself (Mocha = dark, Latte = light):
+**No switcher command and no rebuild.** Almost every tool detects the terminal's
+background colour and autoswitches **Catppuccin** itself (Mocha = dark, Latte =
+light):
 
 - **bat** → `--theme=auto` + `--theme-dark`/`--theme-light` (both ship with bat)
 - **delta** → `detect-dark-light = auto`
-- **btop** → built-in `TTY` theme (renders in the terminal's 16 ANSI colours)
+- **btop** / **tmux** → the terminal's own 16 ANSI colours, so they never need a flavour
 - **nvim** → catppuccin `flavour = "auto"` (nvim detects the terminal background)
 - **yazi** / **glow** → native dark/light auto-detection
 - **WezTerm** & **Zed** detect the OS appearance natively
 - **starship** uses one palette-agnostic config
-- **wallpaper** → a dynamic `.heic` (Latte/Mocha) macOS switches with the appearance
+- **wallpaper** → dynamic `.heic`s, each carrying its own light and dark image (see [Thanks](#thanks))
 
 WezTerm itself switches its Catppuccin Mocha/Latte palette with the OS, so the
 16 ANSI colours everything reads also flip. Toggle the OS appearance — terminal
-tools follow live, GUI apps on relaunch. No rebuild needed.
+tools follow live, GUI apps on relaunch.
+
+**One exception, and it's deliberate: [gh-dash](https://github.com/dlvhdr/gh-dash).**
+It can't autoswitch — its config takes one colour per role, and lipgloss flattens
+adaptive colours to concrete RGB before they reach the terminal, so a configured
+ANSI index never survives. It ships two theme files
+(`home/config/gh-dash/theme-{mocha,latte}.yml`, appended to a shared base at build
+time) and the `ghd` shell function reads `AppleInterfaceStyle` to pick one at
+launch. That's the only shell glue and the only hand-written theme in the repo.
+Two honest limits: the flavour is chosen when the dashboard starts, so it won't
+follow a switch mid-session, and plain `gh dash` (rather than `ghd`) always gets
+Mocha.
+
+The Linux profiles skip all of this and pin Mocha through
+[catppuccin/nix](https://github.com/catppuccin/nix) (`home/theme-mocha.nix`) —
+there's no OS appearance to follow over SSH.
 
 </details>
 
@@ -479,7 +563,7 @@ Source: `home/config/wezterm/wezterm.lua`.
 |---|---|
 | Prefix `\|` / `-` | split horizontal / vertical (keep path) |
 | Prefix `h j k l` · Prefix `⇧ HJKL` | select pane · resize |
-| Prefix `f` | session picker popup (`t` in the shell) — `↵` attach · `^x` kill (asks first) |
+| Prefix `f` | session picker popup (`t` in the shell) — `↵` attach · `^x` kill (asks first) · `^/` preview |
 | Prefix `r` | reload config |
 | copy-mode `v` / `y` | begin selection / copy (vi) |
 
@@ -527,8 +611,10 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd 
   they belong in [devenv.sh](https://devenv.sh) shells, not here.
 - **Homebrew casks are declarative** (zap-prune on activation) — a cask installed by
   hand but not added to `hosts/mac.nix` is removed on the next `nix run .#mac`.
-- **Wallpaper** — first `nix run .#mac` may prompt to allow controlling System Events
-  (so it can set the desktop picture); approve once.
+- **Wallpaper** — shuffled from `wallpaper/mac/` on every switch, at login, and hourly
+  (`wallpaper-shuffle`, a launchd agent; run it by hand to reroll). The first
+  `nix run .#mac` may prompt to allow controlling System Events so it can set the
+  desktop picture — approve once.
 
 </details>
 
