@@ -461,12 +461,12 @@ Two modifier **foundations**, set in Karabiner (`home/config/karabiner/karabiner
 
 | Keys | Action |
 |---|---|
-| `⌘P` | command palette — incl. a tmux session switcher (Leader `?` aliases it) |
+| `⌘P` | command palette (Leader `?` aliases it) — plus `tab: rename…`, `tmux: switch session…`, `tmux: rename session/window…` |
 | Leader `-` / `\|` | split down / right |
 | Leader `h j k l` · Leader `⇧ hjkl` | focus pane · resize pane |
 | Leader `r` | resize mode (then `hjkl`, `Esc`) |
 | Leader `Space` · `f` · `=` · `o` · `q` | pane picker · zoom · swap · rotate · close |
-| Leader `t` · `[` `]` · `1`–`9` · `Tab` | new tab · prev/next · jump N · last |
+| Leader `t` · `[` `]` · `1`–`9` · `Tab` · `,` | new tab · prev/next · jump N · last · rename (empty = back to auto) |
 | Leader `w` · `{` `}` · `$` | workspace switcher · prev/next · rename |
 | Leader `Enter` / `s` · `y` / `v` · `/` | copy-mode / quick-select · copy / paste · search |
 | Leader `m` · `⇧ f` · `⇧ r` | launcher (btop/yazi/lazygit) · fullscreen · reload |
@@ -479,10 +479,20 @@ Source: `home/config/wezterm/wezterm.lua`.
 |---|---|
 | Prefix `\|` / `-` | split horizontal / vertical (keep path) |
 | Prefix `h j k l` · Prefix `⇧ HJKL` | select pane · resize |
+| Prefix `f` | session picker popup (`t` in the shell) — `↵` attach · `^x` kill (asks first) |
 | Prefix `r` | reload config |
 | copy-mode `v` / `y` | begin selection / copy (vi) |
 
 Source: `home/config/tmux/tmux.conf`.
+
+**One session per WezTerm tab.** The tab is the project; tmux windows are tasks
+inside it. Everything that switches sessions keeps that 1:1: the picker (`t`,
+prefix `f`) and `⌘P → tmux: switch session…` *focus the tab* a session is already
+attached to and only open a new tab for a detached one — never `switch-client`,
+which would put two clients on one session and shrink both to the smaller. Tab
+titles follow the session name automatically (`set-titles`), and Leader `,`
+overrides that per tab. Sessions outlive the terminal, so closing WezTerm loses
+nothing; resurrect/continuum bring them back after a reboot.
 
 ### Neovim — leader `Space`
 

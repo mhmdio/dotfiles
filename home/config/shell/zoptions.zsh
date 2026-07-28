@@ -39,8 +39,9 @@ bindkey "^[[B" history-search-forward
 bindkey "^[[C" forward-char
 bindkey "^[[D" backward-char
 
-# Mark symlinked directories (add trailing slash)
-setopt CHASE_LINKS
+# No CHASE_LINKS: it resolves symlinks on cd, and every ~/.config/* here is a
+# home-manager symlink — `cd ~/.config/wezterm` would land in a read-only
+# /nix/store/…-hm_wezterm (and show that path in the prompt).
 
 # Do not autocomplete hidden files unless explicitly starting with dot
 zstyle ':completion:*' match-hidden-files off

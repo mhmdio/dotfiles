@@ -1,6 +1,11 @@
 add_newline = true
 command_timeout = 200
-format = "[$directory$git_branch$git_status]($style)$pulumi$aws$line_break$character"
+format = "[$directory$git_branch$git_status]($style)$pulumi$line_break$character"
+# AWS sits on the right of the input line: it's ambient state, not something you
+# read before typing, and off the left it stops pushing the cursor around when a
+# profile is exported. zsh redraws it as RPROMPT and hides it if a long command
+# runs into it.
+right_format = "$aws"
 
 [character]
 error_symbol = "[✗](bold cyan)"
