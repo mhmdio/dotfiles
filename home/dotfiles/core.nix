@@ -3,7 +3,31 @@
 # dotfiles/workstation.nix. Paths are ../config/… — this file sits one level
 # deeper than the config tree it points at.
 # Theme: each tool autoswitches with the terminal itself (see its own config).
+# gh-dash is the one exception — it can't, so it switches on OS appearance at
+# launch instead; the `let` block below says why.
 { lib, pkgs, ... }:
+let
+  # gh-dash can't follow the terminal the way delta/fzf/btop do. It detects
+  # light vs dark correctly, but every colour it draws is a hardcoded xterm
+  # index emitted as truecolor, so the stock dashboard is xterm greys (#808080,
+  # #c0c0c0) on a Catppuccin terminal — that's the "why is it grey".
+  #
+  # ANSI indices in the config don't help: gh-dash accepts them (dlvhdr/gh-dash#770)
+  # but wraps every configured colour in a lipgloss compat.AdaptiveColor, whose
+  # RGBA() flattens it to the *default* xterm RGB before it reaches the terminal.
+  # Measured: primary "4" renders as #000080 navy, not Catppuccin blue.
+  #
+  # That wrapper also sets Light and Dark to the same value, so one config file
+  # cannot cover both appearances. Hence two: same base, different theme block,
+  # picked at launch by the `ghd` function in shell/aliases.zsh.
+  ghDashConfig =
+    flavour:
+    pkgs.writeText "gh-dash-${flavour}.yml" (
+      builtins.readFile ../config/gh-dash/config.yml
+      + builtins.readFile (../config/gh-dash + "/theme-${flavour}.yml")
+    );
+  ghDashMocha = ghDashConfig "mocha";
+in
 {
   xdg.configFile = {
     # whole-dir tools (tmux is managed via programs.tmux — see home/tmux.nix)
@@ -11,6 +35,14 @@
     "git".source = ../config/git;
 
     # gh/config.yml is managed by programs.gh (see shared.nix), not symlinked here.
+    # gh-dash is a gh extension (also shared.nix) but keeps its own config, which
+    # was never declared — a fresh machine got the stock dashboard. Safe to
+    # symlink read-only: gh-dash only ever writes this file when it's missing
+    # (createConfigFileIfMissing), never on migration the way lazygit does.
+    # config.yml is the mocha build so a bare `gh dash` still works; `ghd` picks.
+    "gh-dash/config.yml".source = ghDashMocha;
+    "gh-dash/config-mocha.yml".source = ghDashMocha;
+    "gh-dash/config-latte.yml".source = ghDashConfig "latte";
 
     # opencode: only the AGENTS.md guidelines (auth.json / opencode.json stay writable)
     "opencode/AGENTS.md".source = ../config/opencode/AGENTS.md;

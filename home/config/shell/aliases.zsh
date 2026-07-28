@@ -30,7 +30,17 @@ alias top='btop'
 alias d='docker'
 alias lg='lazygit'
 alias lwt='lazyworktree'     # git worktree manager TUI
-alias ghd='gh dash'          # GitHub PR/issue dashboard TUI (gh extension, via programs.gh)
+# GitHub PR/issue dashboard TUI (gh extension, via programs.gh). Not an alias
+# because gh-dash can't switch flavour by itself: a configured colour is one
+# value for BOTH appearances, so the flavour is chosen here, per launch. Why it
+# can't follow the terminal palette instead: home/dotfiles/core.nix.
+ghd() {
+  local flavour=mocha
+  if [[ $OSTYPE == darwin* ]] && [[ $(defaults read -g AppleInterfaceStyle 2>/dev/null) != Dark ]]; then
+    flavour=latte  # the key is absent in light mode, so a failed read means light
+  fi
+  gh dash --config "${XDG_CONFIG_HOME:-$HOME/.config}/gh-dash/config-$flavour.yml" "$@"
+}
 alias lzd='lazydocker'
 alias hn='hackernews_tui'    # Hacker News reader TUI (binary is underscored)
 alias v='nvim'

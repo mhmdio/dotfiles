@@ -1,0 +1,37 @@
+# Catppuccin Latte for gh-dash. Appended to config.yml at build time — see
+# home/dotfiles/core.nix. Keep the key set identical to theme-mocha.yml.
+#
+# `inverted` is drawn ON `background.selected` (the footer bar and the view
+# switcher), and `border.faint` is a fill as well as a separator — so those
+# pairs have to be chosen together, not per-key.
+theme:
+    ui:
+        sectionsShowCount: true
+        table:
+            showSeparator: true
+            compact: false
+    colors:
+        text:
+            primary: "#4c4f69" # text — headers, keybind hints, open items
+            secondary: "#7287fd" # lavender — PR/issue numbers, help, version
+            inverted: "#4c4f69" # text — reads on surface1 below
+            faint: "#6c6f85" # subtext0 — timestamps, closed items (most text)
+            warning: "#df8e1d" # yellow — failed checks, changes requested
+            success: "#40a02b" # green — approvals, passing checks
+            error: "#d20f39" # red
+            actor: "#8839ef" # mauve — notification trigger usernames
+        background:
+            selected: "#bcc0cc" # surface1 — active row and the footer bar
+        border:
+            primary: "#1e66f5" # blue — active tab underline, search/preview frame
+            secondary: "#acb0be" # surface2 — tab separators
+            faint: "#ccd0da" # surface0 — row separators, view-switcher fill
+        icon:
+            newcontributor: "#179299" # teal
+            contributor: "#1e66f5" # blue
+            collaborator: "#df8e1d" # yellow
+            member: "#fe640b" # peach
+            owner: "#d20f39" # red
+            unknownrole: "#9ca0b0" # overlay0 — ignored: ParseTheme shims the
+            # other five icon colours and stops at owner, so this one stays on
+            # gh-dash's ANSI 178 (#d7af00). Kept so it lands if upstream fixes it.
