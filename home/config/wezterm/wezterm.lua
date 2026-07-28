@@ -188,12 +188,19 @@ config.launch_menu = {
 -- editor: tmux re-reads the background and nvim fires OptionSet. Only panes whose
 -- foreground process is tmux get it — anywhere else the escape would land in the
 -- program's stdin as literal keystrokes.
+-- Panes hang off tabs, not off the window: MuxWindow has tabs()/active_tab() but
+-- no panes(). Calling it threw "attempt to call a nil value (method 'panes')" on
+-- every appearance flip, which aborted this function before a single report went
+-- out — the colours still changed (set_config_overrides runs first) while tmux
+-- and nvim were never told, i.e. exactly the bug this is here to fix.
 local function notify_theme_change(window, appearance)
 	local report = appearance:find("Dark") and "\27[?997;1n" or "\27[?997;2n"
-	for _, pane in ipairs(window:mux_window():panes()) do
-		local proc = pane:get_foreground_process_name()
-		if proc and proc:match("[^/]+$"):match("^tmux") then
-			pane:send_text(report)
+	for _, tab in ipairs(window:mux_window():tabs()) do
+		for _, pane in ipairs(tab:panes()) do
+			local proc = pane:get_foreground_process_name()
+			if proc and proc:match("[^/]+$"):match("^tmux") then
+				pane:send_text(report)
+			end
 		end
 	end
 end

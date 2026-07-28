@@ -8,7 +8,22 @@ let
   repo = "${config.home.homeDirectory}/Developer/dotfiles";
 in
 {
-  xdg.configFile."wezterm".source = ../config/wezterm;
+  # WezTerm hot-reloads its config by watching the file, and a store symlink
+  # defeats that: every switch repoints ~/.config/wezterm at a NEW store path
+  # while the old one — the one actually being watched — never changes. Measured:
+  # after a switch the store path moved and the file differed, and the running
+  # GUI logged no reload at all, so every edit needed a restart. Installing a
+  # writable copy at a stable path means a switch rewrites the very file wezterm
+  # is watching. Repo stays source of truth; re-applied each switch.
+  home.activation.weztermConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    # one-time migration off the old store symlink; after that it's a real dir
+    if [ -L "$HOME/.config/wezterm" ]; then
+      run rm -f "$HOME/.config/wezterm"
+    fi
+    run mkdir -p "$HOME/.config/wezterm"
+    # overwrite in place rather than rm+create, so the watch survives the switch
+    run install -m 0644 ${../config/wezterm/wezterm.lua} "$HOME/.config/wezterm/wezterm.lua"
+  '';
 
   # lazy.nvim's lockfile pins every plugin commit — the one part of this machine
   # nixpkgs doesn't version. Symlinked OUT of the store so `:Lazy update` writes
