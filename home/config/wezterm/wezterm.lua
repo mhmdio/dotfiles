@@ -208,6 +208,20 @@ end
 -- Apply themed tab bar + scheme based on macOS appearance
 apply_theme(config, theme_for_appearance(wezterm.gui.get_appearance()))
 
+-- Which appearance each window has already reported, so a plain config reload
+-- (Leader+R, or the file changing) doesn't re-announce a theme that never moved.
+local reported = {}
+
+-- The report has to go out on the SECOND pass through this handler. Reporting
+-- straight after set_config_overrides looks right and is a race: the Lua config
+-- updates synchronously — effective_config() returns the new scheme immediately —
+-- but the terminal keeps answering OSC 11 with the OLD background for a beat, and
+-- tmux answers a 2031 report by RE-QUERYING OSC 11 rather than trusting the bit
+-- in it (both measured). So tmux read the previous background and every switch
+-- handed nvim the previous theme: turn dark mode on and the editor stayed light.
+-- Measured over four runs each: reporting immediately was stale 3/4 times,
+-- reporting on the refired pass 0/4. set_config_overrides re-emits this event by
+-- design (documented), so that second pass is free and deterministic.
 wezterm.on("window-config-reloaded", function(window, _)
 	local overrides = window:get_config_overrides() or {}
 	local appearance = window:get_appearance()
@@ -215,6 +229,11 @@ wezterm.on("window-config-reloaded", function(window, _)
 	if overrides.color_scheme ~= target.color_scheme then
 		apply_theme(overrides, target)
 		window:set_config_overrides(overrides)
+		return -- re-fires this handler; the colours are live on that pass
+	end
+	local id = window:mux_window():window_id()
+	if reported[id] ~= appearance then
+		reported[id] = appearance
 		notify_theme_change(window, appearance)
 	end
 end)
