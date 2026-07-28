@@ -23,7 +23,6 @@ local themes = {
 		leader_fg = "#1e1e2e",
 		ktable_bg = "#f9e2af",
 		ktable_fg = "#1e1e2e",
-		opacity = 0.90,
 	},
 	light = {
 		color_scheme = "Catppuccin Latte",
@@ -45,9 +44,6 @@ local themes = {
 		leader_fg = "#eff1f5",
 		ktable_bg = "#df8e1d",
 		ktable_fg = "#4c4f69", -- dark on Latte's gold; white washes out
-		-- Light schemes lose contrast to a bright desktop much faster than dark
-		-- ones, so the glass is thinner here.
-		opacity = 0.96,
 	},
 }
 
@@ -79,7 +75,6 @@ local function apply_theme(cfg, t)
 	cfg.colors.visual_bell = t.bell
 	cfg.command_palette_bg_color = t.palette_bg
 	cfg.command_palette_fg_color = t.palette_fg
-	cfg.window_background_opacity = t.opacity
 end
 
 -- Font (Regular as the default weight so bold renders as actual emphasis; the
@@ -89,10 +84,14 @@ config.font_size = 16
 config.harfbuzz_features = { "calt=1", "clig=1", "liga=1" }
 config.freetype_load_target = "Light"
 
--- Window (opacity is per-appearance — set in apply_theme)
-config.macos_window_background_blur = 20
+-- Window. Opaque, which is WezTerm's default, so nothing is set here. The glass
+-- (0.90 dark / 0.96 light + a 20px blur) had to go: nvim's colorscheme paints
+-- Normal, and text_background_opacity is 1.0, so the editor drew fully opaque
+-- inside a translucent window — a hard step under the tmux bar and a lit frame
+-- down the other three sides. Translucency is all-or-nothing here, and "all"
+-- costs nvim its layering (see nvim/lua/plugins/colorscheme.lua).
 config.window_decorations = "RESIZE"
--- small padding so text doesn't butt against the window edge / blur
+-- small padding so text doesn't butt against the window edge
 config.window_padding = { left = 10, right = 10, top = 8, bottom = 8 }
 config.window_close_confirmation = "NeverPrompt"
 config.adjust_window_size_when_changing_font_size = false
@@ -177,15 +176,39 @@ config.launch_menu = {
 	{ label = "lazygit", args = { "lazygit" } },
 }
 
+-- Tell tmux the appearance flipped. WezTerm doesn't implement DEC mode 2031 —
+-- the terminal→app "theme changed" report (wezterm#6454) — so a tmux client goes
+-- on answering OSC 11 with the background it cached when it attached. Measured:
+-- a session attached in dark still reported #1e1e2e long after the switch, so
+-- every nvim opened inside it loaded Mocha onto a Latte terminal, and restarting
+-- nvim couldn't help — the stale value lives in tmux, not in the editor.
+--
+-- tmux itself understands 2031 (it answers `CSI ?2031;2$y`) and nvim enables the
+-- mode when it sees that, so synthesising the report here flips even a RUNNING
+-- editor: tmux re-reads the background and nvim fires OptionSet. Only panes whose
+-- foreground process is tmux get it — anywhere else the escape would land in the
+-- program's stdin as literal keystrokes.
+local function notify_theme_change(window, appearance)
+	local report = appearance:find("Dark") and "\27[?997;1n" or "\27[?997;2n"
+	for _, pane in ipairs(window:mux_window():panes()) do
+		local proc = pane:get_foreground_process_name()
+		if proc and proc:match("[^/]+$"):match("^tmux") then
+			pane:send_text(report)
+		end
+	end
+end
+
 -- Apply themed tab bar + scheme based on macOS appearance
 apply_theme(config, theme_for_appearance(wezterm.gui.get_appearance()))
 
 wezterm.on("window-config-reloaded", function(window, _)
 	local overrides = window:get_config_overrides() or {}
-	local target = theme_for_appearance(window:get_appearance())
+	local appearance = window:get_appearance()
+	local target = theme_for_appearance(appearance)
 	if overrides.color_scheme ~= target.color_scheme then
 		apply_theme(overrides, target)
 		window:set_config_overrides(overrides)
+		notify_theme_change(window, appearance)
 	end
 end)
 

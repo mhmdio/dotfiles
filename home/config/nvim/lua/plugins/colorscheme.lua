@@ -10,13 +10,11 @@
 -- own entry point is colors/catppuccin-nvim.vim; it sets colors_name to
 -- catppuccin-<flavour>, which both of those then resolve correctly.
 --
--- transparent_background stays OFF on purpose. WezTerm's text_background_opacity
--- is 1.0, and it applies to "cells other than the default background color" — so
--- a colorscheme that paints Normal gets drawn fully opaque even though the window
--- is translucent. Transparent nvim means every cell falls back to the default bg,
--- i.e. the editor is composited against the blurred desktop: washed-out colour,
--- and CursorLine/Pmenu/floats lose the layering they rely on. This way the shell
--- stays glassy and the editor is crisp. One line to flip back if you miss it.
+-- transparent_background stays OFF, and there's nothing left for it to fix:
+-- WezTerm is opaque now (wezterm.lua). Turning it ON was the other way to close
+-- the seam between an opaque editor and a translucent window, but it costs the
+-- editor its own background — every cell falls back to the default one, so
+-- CursorLine, Pmenu and floats composite against the desktop instead of layering.
 return {
   { "LazyVim/LazyVim", opts = { colorscheme = "catppuccin-nvim" } },
   {
