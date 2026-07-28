@@ -13,9 +13,17 @@
   # Lix owns Nix; don't let nix-darwin manage /etc/nix or the daemon.
   nix.enable = false;
 
-  # touch-id sudo unmanaged: the sudo_local symlink needs root context SIP denies
-  # in some activation paths. Enable touchIdAuth + apply via interactive sudo to add.
-  security.pam.services.sudo_local.enable = false;
+  # Touch ID for sudo. macOS 26 already ships `auth include sudo_local` in
+  # /etc/pam.d/sudo, so nix-darwin only drops the file in — no patching of Apple's
+  # file, and nothing unmanaged in the way. `reattach` is what makes it usable
+  # here: without pam_reattach, Touch ID never prompts inside tmux, which is where
+  # every sudo actually gets typed. Config changes don't need any of this — they
+  # go through `make home`, which never touches root.
+  security.pam.services.sudo_local = {
+    enable = true;
+    touchIdAuth = true;
+    reattach = true;
+  };
 
   # System zsh wires Nix paths into every login shell via /etc/zshrc.
   programs.zsh.enable = true;
@@ -140,6 +148,7 @@
       "google-drive"
       "iina"
       "slack"
+      "twingate"
     ];
   };
 }

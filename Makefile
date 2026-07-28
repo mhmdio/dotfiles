@@ -4,7 +4,8 @@
 # tree, builds via nom, prints the nvd diff). Targets auto-detect macOS vs Linux.
 #
 #   make            # list every target
-#   make apply      # build + activate this host
+#   make apply      # build + activate this host (sudo)
+#   make home       # dotfiles only — no sudo
 # ============================================================================
 
 UNAME := $(shell uname -s)
@@ -17,7 +18,7 @@ else
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: help apply switch mac linux build diff generations \
+.PHONY: help apply switch home mac linux build diff generations \
         check fmt lint update rollback gc cleanup clean bootstrap demo
 
 help: ## List every target
@@ -30,6 +31,25 @@ apply: ## Build + activate this host (auto-detects mac/linux)
 	nix run .#$(HOST)
 
 switch: apply ## Alias for `apply`
+
+# home-manager is a nix-darwin module here, so `apply` needs root — but only for
+# the system half: /etc, launchd, macOS defaults, and the per-user PACKAGE profile
+# (useUserPackages puts it in /etc/profiles/per-user). Editing a dotfile touches
+# none of that. nix-darwin's activation ends up exec'ing this very `activate`
+# script as the user (home-manager/nix-darwin/default.nix), so running it directly
+# is the same activation rather than a second, competing one — including
+# --driver-version 1, which is what tells it to leave the Nix profile to the
+# system. Same evaluation as `apply` too: the derivation is read out of the darwin
+# config, not a parallel homeConfigurations output that could drift from it.
+home: ## Apply the user layer only — dotfiles, shell, tmux, nvim (no sudo)
+ifeq ($(UNAME),Darwin)
+	@out=$$(nix build --no-link --print-out-paths \
+	  '.#darwinConfigurations.$(HOST).config.home-manager.users.$(USER).home.activationPackage') \
+	  && "$$out"/activate --driver-version 1
+	@printf '  \033[2mconfig files only — new packages, casks and macOS defaults still need `make apply`\033[0m\n'
+else
+	home-manager switch --flake .#$(HM)
+endif
 
 mac: ## Build + activate the macOS system (nix run .#mac)
 	nix run .#mac
@@ -69,8 +89,25 @@ fmt: ## Format every *.nix with nixfmt (nix fmt)
 lint: ## Fast statix lint, no build (nix run nixpkgs#statix)
 	nix run nixpkgs#statix -- check .
 
-update: ## Bump flake inputs — all, or one: `make update I=nixpkgs`
+update: ## Bump flake inputs + nvim/yazi plugins — one input only: `make update I=nixpkgs`
 	nix flake update $(I)
+# Both plugin sets are pinned in-repo — nvim's lazy-lock.json is symlinked out of
+# the store, yazi's plugins are vendored — so these write straight here and show
+# up in `git diff` next to flake.lock. Skipped when updating a single input:
+# `make update I=nixpkgs` means "just that input".
+#
+# yazi: the deployed ~/.config/yazi is a read-only store symlink, so `ya pkg
+# upgrade` there dies with "Failed to write package.toml" — point it at the repo.
+# --discard is needed because the vendored copies no longer match the hashes
+# recorded in package.toml (they carry no local edits — checked in git).
+ifeq ($(strip $(I)),)
+	@if command -v nvim >/dev/null 2>&1; then nvim --headless '+Lazy! update' +qa; \
+	 else echo "  nvim not installed — skipped its plugins"; fi
+	@if command -v ya >/dev/null 2>&1; then \
+	   YAZI_CONFIG_HOME=$(CURDIR)/home/config/yazi ya pkg upgrade --discard; \
+	 else echo "  ya not installed — skipped yazi's plugins"; fi
+	@git diff --stat -- home/config/nvim/lazy-lock.json home/config/yazi | tail -1
+endif
 
 rollback: ## Activate the previous generation
 ifeq ($(UNAME),Darwin)
