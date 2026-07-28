@@ -18,6 +18,12 @@ local themes = {
 		new_tab_hover_bg = "#313244",
 		palette_bg = "#1e1e2e",
 		palette_fg = "#cdd6f4",
+		bell = "#313244", -- surface0: a flash, not a blackout
+		leader_bg = "#f38ba8", -- status badges (red / yellow on base)
+		leader_fg = "#1e1e2e",
+		ktable_bg = "#f9e2af",
+		ktable_fg = "#1e1e2e",
+		opacity = 0.90,
 	},
 	light = {
 		color_scheme = "Catppuccin Latte",
@@ -34,6 +40,14 @@ local themes = {
 		new_tab_hover_bg = "#ccd0da",
 		palette_bg = "#eff1f5",
 		palette_fg = "#4c4f69",
+		bell = "#ccd0da",
+		leader_bg = "#d20f39",
+		leader_fg = "#eff1f5",
+		ktable_bg = "#df8e1d",
+		ktable_fg = "#4c4f69", -- dark on Latte's gold; white washes out
+		-- Light schemes lose contrast to a bright desktop much faster than dark
+		-- ones, so the glass is thinner here.
+		opacity = 0.96,
 	},
 }
 
@@ -62,8 +76,10 @@ local function apply_theme(cfg, t)
 		new_tab = { bg_color = t.new_tab_bg, fg_color = t.new_tab_fg },
 		new_tab_hover = { bg_color = t.new_tab_hover_bg, fg_color = t.new_tab_fg, italic = false },
 	}
+	cfg.colors.visual_bell = t.bell
 	cfg.command_palette_bg_color = t.palette_bg
 	cfg.command_palette_fg_color = t.palette_fg
+	cfg.window_background_opacity = t.opacity
 end
 
 -- Font (Regular as the default weight so bold renders as actual emphasis; the
@@ -73,8 +89,7 @@ config.font_size = 16
 config.harfbuzz_features = { "calt=1", "clig=1", "liga=1" }
 config.freetype_load_target = "Light"
 
--- Window
-config.window_background_opacity = 0.90
+-- Window (opacity is per-appearance — set in apply_theme)
 config.macos_window_background_blur = 20
 config.window_decorations = "RESIZE"
 -- small padding so text doesn't butt against the window edge / blur
@@ -82,7 +97,8 @@ config.window_padding = { left = 10, right = 10, top = 8, bottom = 8 }
 config.window_close_confirmation = "NeverPrompt"
 config.adjust_window_size_when_changing_font_size = false
 
--- Bell
+-- Bell (flash colour is themed — see apply_theme; a fixed dark grey flashed
+-- near-black on Latte, and the appearance-switch override dropped it entirely)
 config.audible_bell = "Disabled"
 config.visual_bell = {
 	fade_in_function = "EaseIn",
@@ -90,7 +106,6 @@ config.visual_bell = {
 	fade_out_function = "EaseOut",
 	fade_out_duration_ms = 150,
 }
-config.colors = { visual_bell = "#202020" }
 
 -- Tabs
 config.use_fancy_tab_bar = true
@@ -103,7 +118,10 @@ config.tab_and_split_indices_are_zero_based = false
 -- Cursor
 config.default_cursor_style = "SteadyBlock"
 config.cursor_thickness = 2
-config.force_reverse_video_cursor = true
+-- No force_reverse_video_cursor: it overrides the scheme's cursor_fg/bg/border,
+-- so the cursor stopped following Catppuccin (which defines rosewater for both
+-- flavours). Reverse video guarantees contrast anywhere, so flip it back if a
+-- cursor ever disappears against an odd background.
 
 -- Mouse
 config.hide_mouse_cursor_when_typing = true
@@ -181,6 +199,26 @@ local act = wezterm.action
 -- convention). With Caps Lock → Ctrl (Karabiner), it's pressed Caps+Shift+a.
 config.leader = { key = "a", mods = "CTRL|SHIFT", timeout_milliseconds = 1500 }
 
+-- Rename the active tab. Prefilled with the current name; empty input clears the
+-- explicit title so the tab goes back to following the pane. Shared by Leader+,
+-- and the ⌘P palette entry below.
+local set_tab_title = wezterm.action_callback(function(window, _pane, line)
+	if line then -- nil when cancelled with Esc
+		window:active_tab():set_title(line)
+	end
+end)
+
+local rename_tab = wezterm.action_callback(function(window, pane)
+	window:perform_action(
+		act.PromptInputLine({
+			description = "New tab name (empty = automatic):",
+			initial_value = window:active_tab():get_title(),
+			action = set_tab_title,
+		}),
+		pane
+	)
+end)
+
 config.keys = {
 	-- Shift+Enter → CSI-u "Enter+Shift" (\x1b[13;2u) so apps (claude, nvim) insert a
 	-- newline bare AND inside tmux: tmux forwards it through extended-keys (see
@@ -239,6 +277,7 @@ config.keys = {
 	{ key = "8", mods = "LEADER", action = act.ActivateTab(7) },
 	{ key = "9", mods = "LEADER", action = act.ActivateTab(8) },
 	{ key = "Tab", mods = "LEADER", action = act.ActivateLastTab },
+	{ key = ",", mods = "LEADER", action = rename_tab }, -- tmux's prefix+, (rename-window)
 
 	-- Windows
 	{ key = "c", mods = "LEADER|SHIFT", action = act.SpawnWindow },
@@ -317,22 +356,23 @@ config.status_update_interval = 1000
 wezterm.on("update-right-status", function(window, _pane)
 	local segments = {}
 	local palette = window:effective_config().resolved_palette
+	local t = theme_for_appearance(window:get_appearance())
 
 	-- Leader indicator (Catppuccin red on base)
 	if window:leader_is_active() then
-		table.insert(segments, { bg = "#f38ba8", fg = "#1e1e2e", text = " LEADER " })
+		table.insert(segments, { bg = t.leader_bg, fg = t.leader_fg, text = " LEADER " })
 	end
 
 	-- Active key table (Catppuccin yellow on base)
 	local kt = window:active_key_table()
 	if kt then
-		table.insert(segments, { bg = "#f9e2af", fg = "#1e1e2e", text = " " .. kt:upper() .. " " })
+		table.insert(segments, { bg = t.ktable_bg, fg = t.ktable_fg, text = " " .. kt:upper() .. " " })
 	end
 
 	-- Workspace
 	table.insert(segments, {
-		bg = palette.tab_bar and palette.tab_bar.active_tab.bg_color or "#1e1e2e",
-		fg = palette.foreground or "#cdd6f4",
+		bg = palette.tab_bar and palette.tab_bar.active_tab.bg_color or t.active_bg,
+		fg = palette.foreground or t.active_fg,
 		text = " " .. window:active_workspace() .. " ",
 	})
 
@@ -348,12 +388,17 @@ wezterm.on("update-right-status", function(window, _pane)
 	window:set_right_status(wezterm.format(elements))
 end)
 
--- ── Command-palette: tmux session switcher (⌘P) ──────────────────────────────
--- Adds one palette entry, "tmux: switch session…", that opens a fuzzy list of
--- live tmux sessions; picking one runs `tmux switch-client` to move the attached
--- client there. (No keystroke injection — sending the prefix + ":switch-client"
--- races with the InputSelector overlay tearing down, so the leading bytes get
--- dropped and the rest leaks to the shell.)
+-- ── Command-palette: tmux control (⌘P) ───────────────────────────────────────
+-- One tmux session per WezTerm tab, so the palette drives tmux per-tab: switch
+-- to a session (by activating the tab already attached to it), and rename the
+-- session/window living in this tab. (No keystroke injection — sending the
+-- prefix + ":switch-client" races with the InputSelector overlay tearing down,
+-- so the leading bytes get dropped and the rest leaks to the shell.)
+--
+-- Which tmux client belongs to a tab is resolved via the pane's tty, which IS
+-- the client tty. The reverse direction can't be trusted: `wezterm cli` inside
+-- tmux reads $WEZTERM_PANE from the tmux server's inherited environment, so
+-- every pane claims to be whichever tab the server was started in.
 --
 -- Why one entry + InputSelector (not one palette entry per session): in this
 -- WezTerm, wezterm.run_child_process YIELDS, so it only runs inside a coroutine.
@@ -383,6 +428,134 @@ local tmux_bin = (function()
 	return "tmux" -- fall back to PATH (works when WezTerm is launched from a shell)
 end)()
 
+-- The tty of the tmux client living in the active tab, or nil. Two traps this
+-- deliberately avoids:
+--   • the pane handed to a palette entry or prompt callback is a GUI *overlay*
+--     pane ("not visible to the mux layer" per the docs), not the tmux one — so
+--     the panes come from the mux tab instead, same as the tab rename above;
+--   • `tmux display-message -c <tty>` does NOT fail on a tty that isn't a
+--     client: it silently answers for tmux's current client. Renaming off that
+--     answer hits whatever session that client happens to be on, so the tty is
+--     matched against list-clients first and we bail rather than guess.
+local function tmux_client_tty(window)
+	local ok, out = wezterm.run_child_process({ tmux_bin, "list-clients", "-F", "#{client_tty}" })
+	if not ok or not out then
+		return nil
+	end
+	local clients = {}
+	for line in out:gmatch("[^\r\n]+") do
+		clients[line] = true
+	end
+	for _, p in ipairs(window:active_tab():panes()) do
+		local tty = p:get_tty_name()
+		if tty and clients[tty] then
+			return tty
+		end
+	end
+	return nil
+end
+
+-- Ask tmux about that client: `-c <tty>` targets it, so the answer is about the
+-- tab you're looking at. Only ever called with a tty verified above.
+local function tmux_query(tty, format)
+	if not tty then
+		return nil
+	end
+	local ok, out = wezterm.run_child_process({ tmux_bin, "display-message", "-p", "-c", tty, format })
+	if not ok or not out then
+		return nil
+	end
+	local value = out:gsub("%s+$", "")
+	return value ~= "" and value or nil
+end
+
+-- The prompt overlay is modal, so a single pending target + one hoisted callback
+-- is enough (wezterm.action_callback registers an event handler per call — a
+-- fresh one per invocation would accumulate handlers for the life of the GUI).
+local pending_rename
+
+local apply_tmux_rename = wezterm.action_callback(function(_window, _pane, line)
+	local p = pending_rename
+	pending_rename = nil
+	if p and line and #line > 0 then
+		wezterm.run_child_process({ tmux_bin, p.cmd, "-t", p.target, line })
+	end
+end)
+
+-- kind = "session" | "window": prompt (prefilled) and rename whichever one this
+-- tab's tmux client currently has.
+local function tmux_rename_action(kind)
+	local name_format = kind == "session" and "#S" or "#W"
+	local target_format = kind == "session" and "#S" or "#S:#I"
+	return wezterm.action_callback(function(window, pane)
+		local tty = tmux_client_tty(window)
+		local target = tty and tmux_query(tty, target_format)
+		if not target then
+			window:toast_notification("wezterm", "No tmux client attached in this tab", nil, 4000)
+			return
+		end
+		pending_rename = { cmd = "rename-" .. kind, target = target }
+		window:perform_action(
+			act.PromptInputLine({
+				description = "New tmux " .. kind .. " name:",
+				initial_value = tmux_query(tty, name_format) or "",
+				action = apply_tmux_rename,
+			}),
+			pane
+		)
+	end)
+end
+
+local rename_tmux_session = tmux_rename_action("session")
+local rename_tmux_window = tmux_rename_action("window")
+
+-- session name → the tab it's attached to, matched on tty (client ↔ pane).
+local function tabs_by_session()
+	local ok, out = wezterm.run_child_process({
+		tmux_bin, "list-clients", "-F", "#{client_tty}\t#{session_name}",
+	})
+	local session_of_tty = {}
+	if ok and out then
+		for line in out:gmatch("[^\r\n]+") do
+			local tty, session = line:match("^(.-)\t(.+)$")
+			if tty then
+				session_of_tty[tty] = session
+			end
+		end
+	end
+	local found = {}
+	for _, mux_window in ipairs(wezterm.mux.all_windows()) do
+		for _, tab in ipairs(mux_window:tabs()) do
+			for _, p in ipairs(tab:panes()) do
+				local session = session_of_tty[p:get_tty_name() or ""]
+				if session then
+					found[session] = { tab = tab, window = mux_window }
+				end
+			end
+		end
+	end
+	return found
+end
+
+-- Activate the tab that session is already attached to; only a detached session
+-- gets a new tab. Deliberately NOT switch-client: that would point a second tab
+-- at the same session, and tmux then shrinks both clients to the smaller size.
+local activate_session = wezterm.action_callback(function(window, _pane, id)
+	if not id then -- nil when cancelled
+		return
+	end
+	local found = tabs_by_session()[id]
+	if found then
+		found.tab:activate()
+		local gui = found.window:gui_window()
+		if gui then
+			gui:focus()
+		end
+	else
+		window:mux_window():spawn_tab({ args = { tmux_bin, "attach-session", "-t", id } })
+	end
+end)
+
 -- Live tmux sessions as InputSelector choices (must be called from a coroutine).
 local function tmux_session_choices()
 	local ok, out = wezterm.run_child_process({
@@ -404,31 +577,44 @@ local function tmux_session_choices()
 	return choices
 end
 
+local switch_session = wezterm.action_callback(function(window, pane)
+	local choices = tmux_session_choices()
+	if #choices == 0 then
+		window:toast_notification("wezterm", "No tmux sessions found (tmux not running?)", nil, 4000)
+		return
+	end
+	window:perform_action(
+		act.InputSelector({
+			title = "tmux sessions",
+			fuzzy = true,
+			fuzzy_description = "switch to session: ",
+			choices = choices,
+			action = activate_session,
+		}),
+		pane
+	)
+end)
+
 wezterm.on("augment-command-palette", function(_window, _pane)
 	return {
 		{
+			brief = "tab: rename…",
+			icon = "md_rename_box",
+			action = rename_tab,
+		},
+		{
 			brief = "tmux: switch session…",
-			action = wezterm.action_callback(function(window, pane)
-				local choices = tmux_session_choices()
-				if #choices == 0 then
-					window:toast_notification("wezterm", "No tmux sessions found (tmux not running?)", nil, 4000)
-					return
-				end
-				window:perform_action(
-					act.InputSelector({
-						title = "tmux sessions",
-						fuzzy = true,
-						fuzzy_description = "switch to session: ",
-						choices = choices,
-						action = wezterm.action_callback(function(_win, _pane, id)
-							if id then -- nil when cancelled
-								wezterm.run_child_process({ tmux_bin, "switch-client", "-t", id })
-							end
-						end),
-					}),
-					pane
-				)
-			end),
+			action = switch_session,
+		},
+		{
+			brief = "tmux: rename session…",
+			icon = "md_rename_box",
+			action = rename_tmux_session,
+		},
+		{
+			brief = "tmux: rename window…",
+			icon = "md_rename_box",
+			action = rename_tmux_window,
 		},
 	}
 end)
