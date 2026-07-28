@@ -5,6 +5,22 @@
 { inputs }:
 let
   inherit (inputs) nixpkgs nix-darwin home-manager;
+
+  # nixpkgs names the sqlfmt derivation "sqlfmt" but upstream ships the dist as
+  # "shandy_sqlfmt", so pythonMetadataCheckPhase looks up the wrong name and the
+  # build dies — taking harlequin (its only consumer here) with it. Tests still
+  # pass; only the name check is wrong. Drop this once nixpkgs fixes the pname.
+  overlays = [
+    (_: prev: {
+      pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+        (_: pprev: {
+          sqlfmt = pprev.sqlfmt.overridePythonAttrs (_: {
+            dontCheckPythonMetadata = true;
+          });
+        })
+      ];
+    })
+  ];
 in
 {
   # macOS: full system (nix-darwin) + that user's home-manager.
@@ -23,6 +39,7 @@ in
       };
       modules = [
         hostModule
+        { nixpkgs.overlays = overlays; }
         home-manager.darwinModules.home-manager
         {
           home-manager.useGlobalPkgs = true;
@@ -47,7 +64,7 @@ in
     }:
     home-manager.lib.homeManagerConfiguration {
       pkgs = import nixpkgs {
-        inherit system;
+        inherit system overlays;
         config.allowUnfree = true;
       };
       extraSpecialArgs = {
