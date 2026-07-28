@@ -41,11 +41,9 @@
       orientation = "right";
       tilesize = 48;
       persistent-apps = [
-        # pinned dock apps, left → right
-        "/Applications/Obsidian.app"
+        # pinned dock apps, first → last (top → bottom, since the dock is on the right)
         "/Users/${username}/Applications/Home Manager Apps/WezTerm.app"
-        "/System/Applications/Mail.app"
-        "/Users/${username}/Applications/Home Manager Apps/Zed.app"
+        "/Applications/Obsidian.app"
         "/Applications/Google Chrome.app"
         "/Applications/Slack.app"
       ];
