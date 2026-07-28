@@ -180,7 +180,7 @@ dotfiles/
 ├── username.nix          # the account to build for (stamped by bootstrap)
 ├── bootstrap.sh          # one command on a fresh machine, macOS or Linux
 ├── apply.sh              # rebuild wrapper behind `nix run .#mac|linux|server` — nom + nvd
-├── Makefile              # ← the entry point: make apply · home · update · diff · check
+├── Makefile              # the entry point: make apply · home · update · diff · check
 ├── statix.toml           # Nix lint config (nix flake check)
 ├── nix/lib.nix           # flake helpers: mkDarwin · mkHome · lint · fmt
 ├── hosts/mac.nix         # macOS system layer + GUI casks
@@ -242,8 +242,8 @@ casks/taps elsewhere (`wezterm`, `_1password-cli`, `maple-mono`, the
 
 ### Daily use — `make`
 
-**`make` is the interface.** Every target auto-detects macOS vs Linux, so the same
-command works on either. Run `make` on its own for the list.
+**`make` is the interface.** The host-specific targets detect macOS vs Linux
+themselves, so the same command works on either. Run `make` on its own for the list.
 
 ```bash
 make            # list every target (with the detected host)
@@ -379,9 +379,11 @@ Then `make apply` (or `make home` if it was only a dotfile). Search names at
 
 Optional reference — every tool in [`home/packages/`](home/packages) with a
 one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). GUI
-`.app` casks: `homebrew.casks` in `hosts/mac.nix`. Split across
-[`core.nix`](home/packages/core.nix) (everywhere) and
-[`workstation.nix`](home/packages/workstation.nix) (desktops only).
+`.app` casks: `homebrew.casks` in `hosts/mac.nix`.
+
+Everything below is in [`core.nix`](home/packages/core.nix) and lands on every
+profile, servers included — **except the *(desktop)* ones**, which live in
+[`workstation.nix`](home/packages/workstation.nix) and never reach a headless box.
 
 **core shell / file utils**
 
@@ -435,11 +437,11 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | tool | what it is |
 |---|---|
 | [gcc](https://gcc.gnu.org/) | GNU compiler collection |
-| [nodejs_24](https://nodejs.org) | Node.js 24 runtime |
-| [bun](https://bun.sh) | JS runtime + bundler + PM |
-| [pnpm](https://pnpm.io/) | fast JS package manager |
+| [nodejs_24](https://nodejs.org) | Node.js 24 runtime *(desktop)* |
+| [bun](https://bun.sh) | JS runtime + bundler + PM *(desktop)* |
+| [pnpm](https://pnpm.io/) | fast JS package manager *(desktop)* |
 | [tree-sitter](https://github.com/tree-sitter/tree-sitter) | incremental parser |
-| [devenv](https://github.com/cachix/devenv) | per-project dev shells (devenv.sh) |
+| [devenv](https://github.com/cachix/devenv) | per-project dev shells (devenv.sh) *(desktop)* |
 
 **editor / multiplexer**
 
@@ -456,10 +458,10 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [dust](https://github.com/bootandy/dust) | intuitive `du` |
 | [duf](https://github.com/muesli/duf/) | disk usage / free |
 | [gping](https://github.com/orf/gping) | ping with a graph |
-| [lazydocker](https://github.com/jesseduffield/lazydocker) | docker TUI |
-| [docker](https://www.docker.com/) | container CLI (talks to the colima VM) |
-| [docker-compose](https://docs.docker.com/compose/) | multi-container orchestration |
-| [colima](https://github.com/abiosoft/colima) | rootless Docker VM — replaces Docker Desktop (`colima start`) |
+| [lazydocker](https://github.com/jesseduffield/lazydocker) | docker TUI *(desktop)* |
+| [docker](https://www.docker.com/) | container CLI (talks to the colima VM) *(desktop)* |
+| [docker-compose](https://docs.docker.com/compose/) | multi-container orchestration *(desktop)* |
+| [colima](https://github.com/abiosoft/colima) | rootless Docker VM — replaces Docker Desktop (`colima start`) *(desktop)* |
 
 **data / http / net**
 
@@ -471,7 +473,7 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [yq-go](https://mikefarah.gitbook.io/yq/) | YAML processor |
 | [httpie](https://httpie.org/) | human-friendly HTTP client |
 | [xh](https://github.com/ducaale/xh) | fast HTTP client (`curl`/`httpie`) |
-| [posting](https://github.com/darrenburns/posting) | API client TUI — terminal Postman (`posting`) |
+| [posting](https://github.com/darrenburns/posting) | API client TUI — terminal Postman (`posting`) *(desktop)* |
 | [doggo](https://github.com/mr-karan/doggo) | DNS client |
 | [trippy](https://github.com/fujiapple852/trippy) | traceroute + ping TUI (`trip`) |
 | [bandwhich](https://github.com/imsnif/bandwhich) | network usage by process |
@@ -507,27 +509,27 @@ one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). G
 | [fastfetch](https://github.com/fastfetch-cli/fastfetch) | system info (neofetch-like) |
 | [glow](https://github.com/charmbracelet/glow) | render markdown in the terminal |
 | [gum](https://github.com/charmbracelet/gum) | shell-script UI toolkit |
-| [hackernews-tui](https://github.com/aome510/hackernews-TUI) | Hacker News reader (`hn`) |
-| [bagels](https://github.com/EnhancedJax/Bagels) | expense tracker TUI (`bagels`) |
-| [harlequin](https://harlequin.sh/) | SQL IDE for the terminal (`harlequin`) |
-| [cloudlens](https://github.com/one2nc/cloudlens) | k9s-like TUI for AWS/GCP (`cloudlens`) |
+| [hackernews-tui](https://github.com/aome510/hackernews-TUI) | Hacker News reader (`hn`) *(desktop)* |
+| [bagels](https://github.com/EnhancedJax/Bagels) | expense tracker TUI (`bagels`) *(desktop)* |
+| [harlequin](https://harlequin.sh/) | SQL IDE for the terminal (`harlequin`) *(desktop)* |
+| [cloudlens](https://github.com/one2nc/cloudlens) | k9s-like TUI for AWS/GCP (`cloudlens`) *(desktop)* |
 
 **recording / media**
 
 | tool | what it is |
 |---|---|
 | [asciinema](https://asciinema.org/) | terminal session recorder |
-| [ffmpeg](https://www.ffmpeg.org/) | audio/video convert & stream |
-| [imagemagick](https://imagemagick.org/) | image convert & edit |
-| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | video/audio downloader (YouTube + 1000s of sites) |
+| [ffmpeg](https://www.ffmpeg.org/) | audio/video convert & stream *(desktop)* |
+| [imagemagick](https://imagemagick.org/) | image convert & edit *(desktop)* |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | video/audio downloader (YouTube + 1000s of sites) *(desktop)* |
 
 **GUI apps (from nixpkgs)**
 
 | tool | what it is |
 |---|---|
-| [_1password-cli](https://developer.1password.com/docs/cli/) | 1Password CLI (`op`) |
-| [wezterm](https://wezterm.org) | GPU terminal emulator |
-| [zed-editor](https://zed.dev) | code editor (CLI: `zeditor`) |
+| [_1password-cli](https://developer.1password.com/docs/cli/) | 1Password CLI (`op`) *(desktop)* |
+| [wezterm](https://wezterm.org) | GPU terminal emulator *(desktop)* |
+| [zed-editor](https://zed.dev) | code editor (CLI: `zeditor`) *(desktop)* |
 
 **fonts & macOS extras (nix)**
 
@@ -677,17 +679,19 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd 
 <details>
 <summary><h2>Roadmap</h2></summary>
 
-**Coverage** — OSes the config targets
+**Coverage** — what the config targets
 
 - [x] macOS
-- [x] Linux (non-NixOS)
+- [x] Linux desktop (non-NixOS)
+- [x] Linux headless — the `server.nix` profile, x86_64 + aarch64
 - [ ] WSL2 — via [NixOS-WSL](https://github.com/nix-community/NixOS-WSL) (full NixOS,
   not standalone home-manager); see the commented `nixosConfigurations.wsl` in `flake.nix`
 
 **Test** — verified end-to-end on a fresh machine
 
 - [x] macOS
-- [ ] Linux
+- [x] Linux headless — the Hetzner box, via the homelab repo's Ansible role
+- [ ] Linux desktop
 - [ ] WSL2
 
 </details>
