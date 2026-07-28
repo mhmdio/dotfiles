@@ -30,7 +30,24 @@
 [rebase]
   autoStash = true
 
-# delta: syntax-highlighted diffs. Autoswitches by querying the terminal's colors.
+# delta: syntax-highlighted diffs, drawn ENTIRELY from the terminal's 16 ANSI
+# colors, so they are Catppuccin in whichever flavour the terminal is — the same
+# bargain as fzf --color=16 and btop's TTY theme.
+#
+# Not a preference: delta cannot detect light vs dark under lazygit. `auto` skips
+# the query whenever stdout is redirected, which is exactly what a pager inside
+# lazygit is, so it silently fell back to its DARK defaults and painted Monokai
+# on a Latte terminal (dandavison/delta#1968). Forcing detect-dark-light=always
+# doesn't help either — measured: it does emit the OSC 11 query and does get the
+# light answer back, and still resolves dark.
+#
+# Pinning a flavour was the other option, but delta has no way to switch themes
+# on appearance (delta#1678, open). Going all-ANSI removes the question: there is
+# no light or dark version to choose, so lazygit and the shell agree by
+# construction. Verified 0 truecolor and 0 fixed 256-cube colors in the output.
+# Cost: syntax highlighting has 16 colors rather than a full theme, and +/- lines
+# carry no background tint (no ANSI slot reads as "subtle" in both polarities) —
+# removed lines are dim, added are normal, changed spans bold.
 [core]
   pager = delta
 [interactive]
@@ -38,7 +55,22 @@
 [delta]
   navigate = true
   line-numbers = true
+  # only governs styles left unset below, now that the palette is terminal-driven
   detect-dark-light = auto
+  syntax-theme = ansi
+  plus-style = syntax
+  minus-style = syntax dim
+  plus-emph-style = syntax bold
+  minus-emph-style = syntax bold dim
+  line-numbers-plus-style = green
+  line-numbers-minus-style = red
+  line-numbers-zero-style = 8
+  line-numbers-left-style = 8
+  line-numbers-right-style = 8
+  file-style = blue bold
+  file-decoration-style = blue ul
+  hunk-header-decoration-style = 8 ul
+  hunk-header-line-number-style = 8
 [merge]
   conflictstyle = zdiff3
 [diff]
