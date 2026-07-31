@@ -30,7 +30,19 @@ in
     wallpaper-shuffle # also runnable by hand to reroll the wallpaper
   ];
 
-  xdg.configFile."karabiner/karabiner.json".source = ./config/karabiner/karabiner.json;
+  # Karabiner never noticed a new generation: it watches the resolved path, and a
+  # store symlink repoint is invisible to that. Measured — the target changed on
+  # every switch since February and its log recorded no load in between, so edits
+  # here only took effect on the next reboot. onChange fires when the FILE's
+  # content differs (home-manager diffs source vs deployed, not store paths), and
+  # the agent re-reads karabiner.json on start. || true so a switch never fails on
+  # a keyboard remap.
+  xdg.configFile."karabiner/karabiner.json" = {
+    source = ./config/karabiner/karabiner.json;
+    onChange = ''
+      /bin/launchctl kickstart -k "gui/$UID/org.pqrs.service.agent.karabiner_console_user_server" || true
+    '';
+  };
 
   # Wallpaper: shuffled from wallpaper/mac on every switch, and hourly after that.
   # Both paths call the same script, so there is one definition of "pick one".
