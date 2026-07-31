@@ -1,5 +1,5 @@
 # Vi key bindings — matches nvim/wezterm copy-mode mental model.
-# Esc enters normal mode; Caps double-tap = Esc via Karabiner.
+# Esc enters normal mode. (Caps is a plain Ctrl — see karabiner.json.)
 bindkey -v
 # Wait after ESC before deciding it's a standalone Esc (centiseconds).
 # Too low (e.g. 1 = 10ms) and the ESC that prefixes arrow keys (ESC [ A) gets

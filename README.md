@@ -597,7 +597,7 @@ Two modifier **foundations**, set in Karabiner (`home/config/karabiner/karabiner
 | Foundation | Keys | Role |
 |---|---|---|
 | **Hyper** | Right Option → `⌃⌥⇧⌘` | Global namespace — app launch + window/space actions (bound in Raycast's GUI). No app uses all four mods, so nothing collides. |
-| **Caps → Ctrl** | hold `Caps` = `Ctrl`, double-tap = `Esc` | The comfortable Ctrl for the terminal/editor (tmux, nvim, zsh vi-mode). |
+| **Caps → Ctrl** | `Caps` = `Ctrl`, held or tapped | The comfortable Ctrl for the terminal/editor (tmux, nvim, zsh vi-mode). A plain remap — a double-tap-for-Esc rule fires on the ordinary Ctrl-Ctrl of a game and pauses it. |
 
 ### WezTerm — leader `Ctrl+Shift+a` (= Caps+Shift+a)
 
@@ -652,7 +652,7 @@ Stock **LazyVim** keymaps plus a few plugin rebinds: `Ctrl-h/j/k/l` navigates nv
 | `Ctrl+R` | shell history search (Atuin — SQLite, stats, exit codes, optional sync) |
 | `Ctrl+T` · `Alt+C` | insert file/dir path · cd into a dir |
 | `Tab` | fzf-tab completion (with previews) |
-| `Esc` (or double-tap Caps) · `v` | vi normal mode · edit command in `$EDITOR` |
+| `Esc` · `v` | vi normal mode · edit command in `$EDITOR` |
 | `Ctrl+A/E` · `Ctrl+K/U/W` · `Ctrl+Y` | line start/end · kill line/line-back/word · yank |
 
 Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd · `v`/`n` nvim · `lg` lazygit · `hn` Hacker News · `g` + git shorthands. Type **`help`** for a colour cheatsheet of the modern-CLI replacements. Source: `home/config/shell/*.zsh`.

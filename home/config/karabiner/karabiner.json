@@ -3,44 +3,10 @@
     {
       "simple_modifications": [],
       "complex_modifications": {
-        "parameters": {
-          "basic.to_delayed_action_delay_milliseconds": 250
-        },
         "rules": [
           {
-            "description": "Caps Lock: hold = Left Control, double tap = Escape.",
+            "description": "Caps Lock → Left Control. Plain remap, tap included: a double tap used to send Escape, which fires on the ordinary Ctrl-Ctrl of a game (crouch, spam-blocked ability) and pauses it. The physical Esc key is right there.",
             "manipulators": [
-              {
-                "conditions": [
-                  {
-                    "name": "caps_lock_tapped",
-                    "type": "variable_if",
-                    "value": 1
-                  }
-                ],
-                "from": {
-                  "key_code": "caps_lock",
-                  "modifiers": {
-                    "optional": [
-                      "any"
-                    ]
-                  }
-                },
-                "to": [
-                  {
-                    "key_code": "escape"
-                  }
-                ],
-                "to_after_key_up": [
-                  {
-                    "set_variable": {
-                      "name": "caps_lock_tapped",
-                      "value": 0
-                    }
-                  }
-                ],
-                "type": "basic"
-              },
               {
                 "from": {
                   "key_code": "caps_lock",
@@ -53,32 +19,6 @@
                 "to": [
                   {
                     "key_code": "left_control"
-                  }
-                ],
-                "to_delayed_action": {
-                  "to_if_canceled": [
-                    {
-                      "set_variable": {
-                        "name": "caps_lock_tapped",
-                        "value": 0
-                      }
-                    }
-                  ],
-                  "to_if_invoked": [
-                    {
-                      "set_variable": {
-                        "name": "caps_lock_tapped",
-                        "value": 0
-                      }
-                    }
-                  ]
-                },
-                "to_if_alone": [
-                  {
-                    "set_variable": {
-                      "name": "caps_lock_tapped",
-                      "value": 1
-                    }
                   }
                 ],
                 "type": "basic"
