@@ -59,7 +59,9 @@ local function apply_theme(cfg, t)
 	cfg.color_scheme = t.color_scheme
 	cfg.window_frame = {
 		font = wezterm.font({ family = "Maple Mono NF", weight = "Bold" }),
-		font_size = 16,
+		-- Deliberately larger than the 16pt body: the fancy tab bar's height is
+		-- derived from this, so it also buys the tabs a little more room.
+		font_size = 18,
 		active_titlebar_bg = t.frame_bg,
 		inactive_titlebar_bg = t.frame_bg,
 	}
@@ -229,11 +231,32 @@ local reported = {}
 -- Measured over four runs each: reporting immediately was stale 3/4 times,
 -- reporting on the refired pass 0/4. set_config_overrides re-emits this event by
 -- design (documented), so that second pass is free and deterministic.
+-- Every scalar apply_theme owns. Overrides SHADOW the base config, so gating the
+-- re-apply on color_scheme alone froze all the others: edit the tab-bar font size
+-- or a frame colour and windows kept the values they were given at startup until
+-- the next appearance flip. Comparing the whole set fixes that, and stays
+-- loop-safe because apply_theme is deterministic — one pass and the signatures
+-- match. Fonts are excluded on purpose: wezterm.font returns an object that need
+-- not compare equal to itself, which would re-fire forever.
+local function theme_sig(cfg)
+	local wf = cfg.window_frame or {}
+	local tb = (cfg.colors or {}).tab_bar or {}
+	return table.concat({
+		tostring(cfg.color_scheme),
+		tostring(wf.font_size),
+		tostring(wf.active_titlebar_bg),
+		tostring(tb.background),
+		tostring(cfg.command_palette_bg_color),
+	}, "|")
+end
+
 wezterm.on("window-config-reloaded", function(window, _)
 	local overrides = window:get_config_overrides() or {}
 	local appearance = window:get_appearance()
 	local target = theme_for_appearance(appearance)
-	if overrides.color_scheme ~= target.color_scheme then
+	local desired = {}
+	apply_theme(desired, target)
+	if theme_sig(overrides) ~= theme_sig(desired) then
 		apply_theme(overrides, target)
 		window:set_config_overrides(overrides)
 		return -- re-fires this handler; the colours are live on that pass
