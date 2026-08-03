@@ -95,6 +95,13 @@ config.window_decorations = "RESIZE"
 config.window_padding = { left = 10, right = 10, top = 8, bottom = 8 }
 config.window_close_confirmation = "NeverPrompt"
 config.adjust_window_size_when_changing_font_size = false
+-- Snap drag-resize to whole cells. Off by default, so any drag leaves up to one
+-- row of slack the grid can't use — WezTerm parks it under the last row and
+-- fills it with the background. Invisible at a shell prompt, obvious in nvim or
+-- yazi, which paint that last row: measured 25px of it below the statusline,
+-- three times the padding above. Only governs interactive resizes — maximise or
+-- a tiling manager hands over whatever height it likes and the slack returns.
+config.use_resize_increments = true
 
 -- Bell (flash colour is themed — see apply_theme; a fixed dark grey flashed
 -- near-black on Latte, and the appearance-switch override dropped it entirely)
