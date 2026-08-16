@@ -1,7 +1,7 @@
 # Workstation-only dotfiles — configs for apps that need a desktop. Paired with
 # packages/workstation.nix: the package and its config ship together, so a
 # headless profile pulls in neither.
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 let
   # Where this repo is checked out. Only needed for the writable symlink below —
   # everything else flows through the store. Change it if you clone elsewhere.
@@ -21,8 +21,28 @@ in
       run rm -f "$HOME/.config/wezterm"
     fi
     run mkdir -p "$HOME/.config/wezterm"
-    # overwrite in place rather than rm+create, so the watch survives the switch
-    run install -m 0644 ${../config/wezterm/wezterm.lua} "$HOME/.config/wezterm/wezterm.lua"
+    # `install` was the bug this block was written to avoid: it does NOT overwrite
+    # in place — it writes a temp file and renames it over the target, so the
+    # target gets a NEW inode every time (measured: 320831622 → 320831626 on a
+    # single install). WezTerm's watcher stays on the dead inode and hot-reload
+    # silently stops after the first switch, which is exactly the symptom this
+    # whole writable-copy dance exists to prevent.
+    #
+    # touch + chmod + cp instead: touch creates it if missing, chmod makes it
+    # writable (a store copy lands 0444, and cp can't truncate a read-only file),
+    # and plain cp — no -f, which would unlink and re-create on a failed open —
+    # truncates the existing file. Inode and mode verified stable across repeats.
+    run touch "$HOME/.config/wezterm/wezterm.lua"
+    run chmod 0644 "$HOME/.config/wezterm/wezterm.lua"
+    run cp ${../config/wezterm/wezterm.lua} "$HOME/.config/wezterm/wezterm.lua"
+  '';
+
+  # WezTerm ships its own shell integration; config/shell/inits.zsh sources it
+  # from here. mkBefore because shared.nix's initContent sources the whole
+  # config/shell tree, and this export has to exist before that runs. Declared in
+  # the workstation profile so a headless box never pulls wezterm in for it.
+  programs.zsh.initContent = lib.mkBefore ''
+    export _NIX_WEZTERM_SH="${pkgs.wezterm}/etc/profile.d/wezterm.sh"
   '';
 
   # lazy.nvim's lockfile pins every plugin commit — the one part of this machine

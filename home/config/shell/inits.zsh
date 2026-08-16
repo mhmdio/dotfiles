@@ -20,6 +20,16 @@ fi
 
 command -v zoxide &>/dev/null && eval "$(zoxide init "$_shell_name")"
 
+# WezTerm shell integration: OSC 7 (cwd), OSC 133 (prompt/output marks), OSC 1337
+# (user vars). OSC 133 is the part that isn't already covered — WezTerm resolves
+# the cwd from the process group leader on macOS without OSC 7 — and it's what
+# makes ⌘⇧↑/↓ jump between prompts and lets a click select a whole command's
+# output. Sourced after starship so its precmd hook lands last. Path comes from
+# $_NIX_WEZTERM_SH (dotfiles/workstation.nix); unset on a headless profile.
+if [[ -n "$ZSH_VERSION" && "$TERM_PROGRAM" == "WezTerm" && -r "${_NIX_WEZTERM_SH:-}" ]]; then
+  source "$_NIX_WEZTERM_SH"
+fi
+
 unset _shell_name
 
 # brew (GUI casks) puts /opt/homebrew first; re-prepend nix so its tools win.
