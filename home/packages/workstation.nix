@@ -17,6 +17,7 @@
     nodejs_24
     bun
     pnpm
+    uv # Python runtime/installer; `uvx` runs the AWS MCP servers in opencode.json
     devenv # per-client reproducible shells (devenv.sh) + direnv
 
     # media (transcode/convert helpers in config/shell/functions.zsh)
