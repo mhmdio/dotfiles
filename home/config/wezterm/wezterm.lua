@@ -5,15 +5,20 @@ local config = wezterm.config_builder()
 local themes = {
 	dark = {
 		color_scheme = "Catppuccin Mocha",
-		frame_bg = "#181825",
+		-- Three levels, and they have to be three: bar < inactive tab < active tab.
+		-- The bar used to be mantle, the same value as an inactive tab, so an
+		-- unfocused tab had no edge at all — a run of grey text with nothing under
+		-- it reading as a tab. Crust puts the bar behind them, mantle raises the
+		-- tabs onto it, and base makes the active one continuous with the terminal.
+		frame_bg = "#11111b", -- crust: the bar itself
 		frame_fg = "#cdd6f4",
-		active_bg = "#1e1e2e",
+		active_bg = "#1e1e2e", -- base: same as the terminal below it
 		active_fg = "#cdd6f4",
-		inactive_bg = "#181825",
+		inactive_bg = "#181825", -- mantle: raised off the bar, below the active tab
 		inactive_fg = "#45475a",
 		hover_bg = "#313244",
 		hover_fg = "#cdd6f4",
-		new_tab_bg = "#181825",
+		new_tab_bg = "#11111b",
 		new_tab_fg = "#89b4fa",
 		new_tab_hover_bg = "#313244",
 		palette_bg = "#1e1e2e",
@@ -23,18 +28,24 @@ local themes = {
 		leader_fg = "#1e1e2e",
 		ktable_bg = "#f9e2af",
 		ktable_fg = "#1e1e2e",
+		accent = "#89b4fa", -- ANSI blue — the slot tmux's bar borrows, so both match
+		split = "#45475a", -- surface1: pane divider
+		-- Inactive panes dim (tmux has no equivalent, so it only ever helps).
+		-- Dark can take a real knock; Latte is already near-white, where the same
+		-- multiplier reads as a grey shadow rather than "unfocused".
+		hsb = { saturation = 0.9, brightness = 0.72 },
 	},
 	light = {
 		color_scheme = "Catppuccin Latte",
-		frame_bg = "#e6e9ef",
+		frame_bg = "#dce0e8", -- crust
 		frame_fg = "#4c4f69",
-		active_bg = "#eff1f5",
+		active_bg = "#eff1f5", -- base
 		active_fg = "#4c4f69",
-		inactive_bg = "#e6e9ef",
-		inactive_fg = "#bcc0cc",
+		inactive_bg = "#e6e9ef", -- mantle
+		inactive_fg = "#9ca0b0", -- overlay0: Latte's surface1 was too faint to read
 		hover_bg = "#ccd0da",
 		hover_fg = "#4c4f69",
-		new_tab_bg = "#e6e9ef",
+		new_tab_bg = "#dce0e8",
 		new_tab_fg = "#1e66f5",
 		new_tab_hover_bg = "#ccd0da",
 		palette_bg = "#eff1f5",
@@ -44,6 +55,9 @@ local themes = {
 		leader_fg = "#eff1f5",
 		ktable_bg = "#df8e1d",
 		ktable_fg = "#4c4f69", -- dark on Latte's gold; white washes out
+		accent = "#1e66f5",
+		split = "#bcc0cc",
+		hsb = { saturation = 0.92, brightness = 0.95 },
 	},
 }
 
@@ -55,12 +69,58 @@ local function theme_for_appearance(appearance)
 	end
 end
 
+-- wezterm.gui resolves to nil outside the GUI process (documented), and the mux
+-- server evaluates this same file whenever a unix domain is attached — see the
+-- domains block below. An unguarded get_appearance() there is a config-load error,
+-- which is a spawn failure, not a cosmetic one.
+local function appearance()
+	local gui = wezterm.gui
+	return (gui and gui.get_appearance()) or "Dark"
+end
+
+local function exists(path)
+	local fh = io.open(path, "r")
+	if fh then
+		fh:close()
+		return true
+	end
+	return false
+end
+
+-- Absolute path to a CLI, or its bare name as a last resort. Every helper that
+-- shells out goes through this: a GUI launched by launchd inherits a minimal PATH
+-- and often no $USER, so a bare "zoxide" resolves only when WezTerm happens to
+-- have been started from a shell. $HOME is reliably set, so the nix-darwin
+-- per-user profile is derived from it. No run_child_process to find them — config
+-- eval isn't a coroutine, so it can't yield.
+local function find_bin(name)
+	local home = wezterm.home_dir or os.getenv("HOME") or ""
+	local user = home:match("([^/]+)/?$") or ""
+	for _, dir in ipairs({
+		"/etc/profiles/per-user/" .. user .. "/bin",
+		home .. "/.nix-profile/bin",
+		"/run/current-system/sw/bin",
+		"/opt/homebrew/bin",
+		"/usr/local/bin",
+		"/usr/bin",
+	}) do
+		local p = dir .. "/" .. name
+		if exists(p) then
+			return p
+		end
+	end
+	return name
+end
+
 local function apply_theme(cfg, t)
 	cfg.color_scheme = t.color_scheme
 	cfg.window_frame = {
 		font = wezterm.font({ family = "Maple Mono NF", weight = "Bold" }),
-		-- Deliberately larger than the 16pt body: the fancy tab bar's height is
-		-- derived from this, so it also buys the tabs a little more room.
+		-- Inert while use_fancy_tab_bar is false, and kept only so flipping that
+		-- back needs no other edit. Verified in the source: window_frame is read by
+		-- render/fancy_tab_bar.rs (titlebar bg) and render/borders.rs (border
+		-- colours, unset here) — the retro bar reads neither, so this sizes nothing
+		-- today. The tab bar's only size lever is config.font_size; see below.
 		font_size = 18,
 		active_titlebar_bg = t.frame_bg,
 		inactive_titlebar_bg = t.frame_bg,
@@ -75,6 +135,8 @@ local function apply_theme(cfg, t)
 		new_tab_hover = { bg_color = t.new_tab_hover_bg, fg_color = t.new_tab_fg, italic = false },
 	}
 	cfg.colors.visual_bell = t.bell
+	cfg.colors.split = t.split
+	cfg.inactive_pane_hsb = t.hsb
 	cfg.command_palette_bg_color = t.palette_bg
 	cfg.command_palette_fg_color = t.palette_fg
 end
@@ -115,13 +177,171 @@ config.visual_bell = {
 	fade_out_duration_ms = 150,
 }
 
--- Tabs
-config.use_fancy_tab_bar = true
+-- Tabs. The retro bar, not the fancy one: only retro renders as terminal cells,
+-- which is what makes the powerline wedges below possible. The cost is fixed and
+-- worth knowing — per the docs the retro bar "is rendered using the main terminal
+-- font", so it is 16pt like the body and window_frame.font_size no longer reaches
+-- it. There is no separate size knob; the only lever is config.font_size itself.
+config.use_fancy_tab_bar = false
 config.tab_max_width = 32
-config.hide_tab_bar_if_only_one_tab = true
+-- Was true, which silently took the whole status bar with it. The status lines are
+-- not a separate surface: tabbar.rs composes left_status and right_status INTO the
+-- tab bar line, and render/paint.rs gates the entire thing behind one
+-- `if self.show_tab_bar` — which mod.rs recomputes as
+-- `num_tabs == 1 && hide_tab_bar_if_only_one_tab` → false. So with a single tab the
+-- workspace pill, the leader indicator and the whole CPU/RAM/disk/battery/clock row
+-- were simply not painted, which is most of a session. Set this back to true only
+-- if a bare single-tab window is worth more than the bar.
+config.hide_tab_bar_if_only_one_tab = false
 config.show_new_tab_button_in_tab_bar = true
 config.switch_to_last_active_tab_when_closing_tab = true
 config.tab_and_split_indices_are_zero_based = false
+
+-- ── Glyphs ───────────────────────────────────────────────────────────────────
+-- Written as \u{...} escapes, never as literal characters, and this is not
+-- fussiness: these are Private Use Area codepoints and they do NOT survive every
+-- tool that rewrites this file. Measured — every 3-byte BMP glyph in this table
+-- had been silently emptied to "" while the 4-byte ones came through, so most
+-- tabs rendered with no icon at all. tmux.conf's @icon records hitting exactly
+-- the same trap ("strip them and every rule quietly becomes s/x//"). Escapes are
+-- plain ASCII on disk, so there is nothing left to strip.
+--
+-- Codepoints are lifted from tmux.conf's @icon table so a process wears the same
+-- icon in both bars. All 27 verified present in Maple Mono NF.
+local G = {
+	nvim = "\u{e62b}",
+	git = "\u{e702}",
+	files = "\u{f07c}",
+	claude = "\u{f06a9}",
+	node = "\u{e718}",
+	python = "\u{e73c}",
+	infra = "\u{f01a7}",
+	ssh = "\u{f0318}",
+	monitor = "\u{f42b}",
+	shell = "\u{f489}",
+	dot = "\u{ebe3}", -- @icon's outermost catch-all
+	zoom = "\u{f4a7}",
+	wedge = "\u{e0b0}", -- solid powerline hand-off
+	session = "\u{ebc8}", -- workspace pill, idle
+	bolt = "\u{f0e7}", -- workspace pill, leader armed
+	cpu = "\u{f2db}",
+	ram = "\u{f233}",
+	disk = "\u{eb4b}",
+	clock = "\u{f017}",
+	calendar = "\u{f073}",
+	battery = { "\u{f244}", "\u{f243}", "\u{f242}", "\u{f241}", "\u{f240}" }, -- empty→full
+}
+
+local icons = {}
+for _, spec in ipairs({
+	{ G.nvim, "nvim", "vim" },
+	{ G.git, "git", "lazygit", "gh", "tig" },
+	{ G.files, "yazi", "ranger", "lf", "nnn" },
+	{ G.claude, "claude" },
+	{ G.node, "node", "npm", "pnpm", "yarn", "bun", "deno" },
+	{ G.python, "python", "python3", "uv", "ipython", "pytest" },
+	{ G.infra, "docker", "docker-compose", "kubectl", "k9s", "terraform", "tofu" },
+	{ G.ssh, "ssh", "mosh" },
+	{ G.monitor, "btop", "htop", "top", "glances" },
+	{ G.shell, "zsh", "bash", "fish", "sh", "tmux" },
+}) do
+	for i = 2, #spec do
+		icons[spec[i]] = spec[1]
+	end
+end
+
+local function icon_for(name)
+	return icons[name] or G.dot
+end
+
+-- The theme in force, cached. format-tab-title runs for every tab on every tab
+-- bar repaint, and get_appearance() is a call into AppKit — not something to do
+-- per tab at 120fps. Kept current by window-config-reloaded, which is already
+-- the one place that notices the appearance moving.
+local active_theme = theme_for_appearance(appearance())
+
+-- format-tab-title runs on the GUI thread for every tab on every repaint, so it
+-- may only touch the pre-computed PaneInformation fields. foreground_process_name
+-- is explicitly NOT one of them (the docs flag it as computed-on-access), which is
+-- why the process is read off the title instead of queried.
+wezterm.on("format-tab-title", function(tab, tabs, _panes, _cfg, hover, max_width)
+	local t = active_theme
+	local pane = tab.active_pane
+
+	-- What the tab SAYS. claude reports its version as the process name, so a bare
+	-- pane running it is titled "2.1.220" — the rename tmux's
+	-- automatic-rename-format does, done here for the tmux-less case.
+	local title = tab.tab_title
+	if not title or #title == 0 then
+		title = pane.title or ""
+		if title:match("^[0-9][0-9.]*$") then
+			title = "claude"
+		end
+	end
+
+	-- What the tab RUNS, which is a different question: an app is free to set its
+	-- own title (claude writes a progress line into it), so the title is only a
+	-- fallback. WEZTERM_PROG is the shell integration's OSC 1337 (see
+	-- config/shell/inits.zsh) and lives on the pre-computed side of
+	-- PaneInformation, unlike foreground_process_name — empty at an idle prompt.
+	local prog = ((pane.user_vars or {}).WEZTERM_PROG or ""):match("^%S*") or ""
+	if prog == "" then
+		prog = (pane.title or ""):match("^%S*") or ""
+	end
+	if prog:match("^[0-9][0-9.]*$") then
+		prog = "claude"
+	end
+
+	-- A title starting outside ASCII is already icon-prefixed — that's tmux's
+	-- set-titles-string ("#{E:@icon} #S"). Stacking ours on top gave every tmux tab
+	-- two glyphs, so trust whoever got there first.
+	local prefix = ""
+	if title:byte(1) and title:byte(1) < 0xEE then
+		prefix = icon_for(prog) .. " "
+	end
+
+	local flags = ""
+	if pane.is_zoomed then
+		flags = flags .. " " .. G.zoom
+	end
+	-- tmux's activity flag: something printed in a tab you aren't looking at.
+	if not tab.is_active and pane.has_unseen_output then
+		flags = flags .. " ●"
+	end
+
+	local index = tostring(tab.tab_index + 1)
+	-- Two spaces of padding either side, not one: the bar can't grow its font (it
+	-- is the terminal's), so width is the only dimension left to give the tabs any
+	-- presence. Budget the truncation against it — column_width, not #, because a
+	-- Nerd Font glyph is 3-4 bytes and draws in one or two cells.
+	local room = max_width - (#index + wezterm.column_width(prefix .. flags) + 7)
+	if room < 4 then
+		room = 4
+	end
+	title = wezterm.truncate_right(title, room)
+
+	-- Each tab paints its own slab and then the wedge that hands over to the NEXT
+	-- tab's colour, so the run is continuous with no gaps; the last hands over to
+	-- the bar. Getting the wedge's two colours backwards is the classic powerline
+	-- mistake — it is drawn in THIS tab's background over the next one's.
+	local bg = tab.is_active and t.accent or t.inactive_bg
+	local fg = tab.is_active and t.frame_bg or (hover and t.hover_fg or t.inactive_fg)
+	local next_bg = t.frame_bg
+	for _, other in ipairs(tabs) do
+		if other.tab_index == tab.tab_index + 1 then
+			next_bg = other.is_active and t.accent or t.inactive_bg
+		end
+	end
+	return {
+		{ Background = { Color = bg } },
+		{ Foreground = { Color = fg } },
+		{ Attribute = { Intensity = tab.is_active and "Bold" or "Normal" } },
+		{ Text = "  " .. index .. " " .. prefix .. title .. flags .. "  " },
+		{ Background = { Color = next_bg } },
+		{ Foreground = { Color = bg } },
+		{ Text = G.wedge },
+	}
+end)
 
 -- Cursor
 config.default_cursor_style = "SteadyBlock"
@@ -157,6 +377,17 @@ config.mouse_bindings = {
 
 -- Hyperlinks: URLs, file paths, mailto (built-in defaults are good)
 config.hyperlink_rules = wezterm.default_hyperlink_rules()
+
+-- Quick select (Leader+s): these ADD to the built-ins (URLs, paths, sha1-ish
+-- hex), they don't replace them — disable_default_quick_select_patterns would.
+-- Rust regex, NOT Lua patterns: %d and %s here match a literal % followed by a
+-- letter, so the rule silently never fires. Backslashes are doubled for Lua.
+config.quick_select_patterns = {
+	"[^\\s:]+\\.[a-zA-Z]+:\\d+(:\\d+)?", -- file.ext:line[:col] — compiler/test output
+	"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", -- uuid
+	"\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b", -- ipv4
+	"[a-zA-Z0-9._/-]+@sha256:[0-9a-f]{7,64}", -- pinned container image
+}
 
 -- Scrollback
 config.scrollback_lines = 100000
@@ -215,7 +446,7 @@ local function notify_theme_change(window, appearance)
 end
 
 -- Apply themed tab bar + scheme based on macOS appearance
-apply_theme(config, theme_for_appearance(wezterm.gui.get_appearance()))
+apply_theme(config, theme_for_appearance(appearance()))
 
 -- Which appearance each window has already reported, so a plain config reload
 -- (Leader+R, or the file changing) doesn't re-announce a theme that never moved.
@@ -247,6 +478,8 @@ local function theme_sig(cfg)
 		tostring(wf.active_titlebar_bg),
 		tostring(tb.background),
 		tostring(cfg.command_palette_bg_color),
+		tostring((cfg.colors or {}).split),
+		tostring((cfg.inactive_pane_hsb or {}).brightness),
 	}, "|")
 end
 
@@ -254,6 +487,7 @@ wezterm.on("window-config-reloaded", function(window, _)
 	local overrides = window:get_config_overrides() or {}
 	local appearance = window:get_appearance()
 	local target = theme_for_appearance(appearance)
+	active_theme = target -- what the tab bar paints with; see the note by icon_for
 	local desired = {}
 	apply_theme(desired, target)
 	if theme_sig(overrides) ~= theme_sig(desired) then
@@ -269,14 +503,47 @@ wezterm.on("window-config-reloaded", function(window, _)
 end)
 
 -- Name the default workspace "WezTerm" (instead of "default") — shows in the
--- right status bar and the Leader+w workspace switcher.
+-- left status bar and the Leader+w workspace switcher.
 config.default_workspace = "WezTerm"
 
--- ── Leader key ─────────────────────────────────
+-- ── Persistence: the one thing WezTerm needs a domain for ────────────────────
+-- Panes in the local domain die with the GUI. A unix domain moves them into a
+-- wezterm-mux-server that outlives it, which is WezTerm's own detach/attach:
+-- ⌘P "domain: attach…" puts a tab in it, Leader+Shift+D detaches, and whatever
+-- was running is still there after a restart.
+--
+-- Deliberately NOT auto-connected (no default_gui_startup_args = {"connect",…}).
+-- Process introspection is documented as local-panes-only: over ANY multiplexer
+-- domain, unix included, pane:get_foreground_process_name() returns nil. Three
+-- things here run on it — the tmux theme-change bridge below, the tab-title
+-- icons, and Ctrl+hjkl passthrough — so making every pane a mux pane by default
+-- would trade a working theme switch for persistence tmux already provides.
+--
+-- Attaching per-tab keeps both: ordinary tabs stay local and fully introspected,
+-- and anything that has to survive a restart is opted in one tab at a time. The
+-- mux server pins the wezterm binary it started with, so after a nix switch that
+-- bumps wezterm a reattach can fail on a version mismatch; `pkill
+-- wezterm-mux-server` clears it (and takes the persisted panes with it).
+config.unix_domains = { { name = "persist" } }
+
+-- ── Leader key ───────────────────────────────────────────────────────────────
 local act = wezterm.action
--- Leader = Ctrl+Shift+a (same modifier family as the Ctrl+Shift+P palette
--- convention). With Caps Lock → Ctrl (Karabiner), it's pressed Caps+Shift+a.
-config.leader = { key = "a", mods = "CTRL|SHIFT", timeout_milliseconds = 1500 }
+-- Leader = ⌘a: one modifier, thumb and pinky, no three-key stretch.
+--
+-- The reason it's Cmd and not Ctrl is that macOS never delivers a Cmd chord to
+-- the program running inside the terminal, so this leader takes NOTHING away
+-- from tmux, nvim, zsh or claude. A Ctrl leader always costs something: Ctrl+a
+-- is beginning-of-line (bound in zoptions.zsh) and Ctrl+Space opens blink.cmp's
+-- completion menu, and WezTerm would swallow either before the app saw it. That
+-- also retires the old double-tap binding that existed only to hand a literal
+-- Ctrl+a back. WezTerm builds no macOS menu bar, so nothing claims ⌘A first.
+--
+-- Linux has no equally free modifier — Super belongs to the window manager — so
+-- it falls back to Ctrl+;, which has no terminal encoding at all and is
+-- therefore just as free of app conflicts.
+local is_mac = wezterm.target_triple:find("darwin") ~= nil
+config.leader = is_mac and { key = "a", mods = "CMD", timeout_milliseconds = 1500 }
+	or { key = ";", mods = "CTRL", timeout_milliseconds = 1500 }
 
 -- Rename the active tab. Prefilled with the current name; empty input clears the
 -- explicit title so the tab goes back to following the pane. Shared by Leader+,
@@ -298,14 +565,245 @@ local rename_tab = wezterm.action_callback(function(window, pane)
 	)
 end)
 
+-- ── Ctrl+hjkl: one motion for nvim splits, tmux panes and WezTerm panes ──────
+-- vim-tmux-navigator already joins nvim↔tmux inside a pane; this carries the same
+-- keys outward, so a WezTerm split is crossed with the motion you already use.
+-- Anything that manages its own splits gets the key untouched — otherwise the
+-- editor would lose Ctrl+h/j/k/l the moment it stopped being alone on screen.
+--
+-- A single-pane tab always passes through: there is nowhere to move, and Ctrl+l
+-- is the shell's clear-screen. Mux panes report no process name (see the domains
+-- block), which lands in that same pass-through branch — the safe direction.
+local function nav(key, dir)
+	return wezterm.action_callback(function(window, pane)
+		-- The tab's panes, not pane:tab(): a callback can be handed a GUI overlay
+		-- pane, which the mux layer doesn't know about (same trap as rename_tab).
+		local panes = window:active_tab():panes()
+		local proc = pane:get_foreground_process_name()
+		proc = proc and proc:match("[^/]+$") or ""
+		if #panes < 2 or proc:match("^n?vim$") or proc:match("^tmux") then
+			window:perform_action(act.SendKey({ key = key, mods = "CTRL" }), pane)
+		else
+			window:perform_action(act.ActivatePaneDirection(dir), pane)
+		end
+	end)
+end
+
+-- ── Sessionizer: project → workspace (Leader+f) ──────────────────────────────
+-- The WezTerm-level twin of tmux's prefix+f. Workspaces are WezTerm's sessions,
+-- so picking a project either jumps to its live workspace or spawns one rooted in
+-- its directory. Two sources: zoxide, which orders the list by what you actually
+-- use, and every git checkout under ~/Developer, so a fresh clone is offerable
+-- before it has been visited once.
+--
+-- Both shell out, and run_child_process yields — legal only inside a coroutine.
+-- action_callback runs in one; config file scope does not (same constraint the
+-- tmux palette entries are built around).
+local PROJECTS = (wezterm.home_dir or os.getenv("HOME") or "") .. "/Developer"
+local zoxide_bin = find_bin("zoxide")
+local fd_bin = find_bin("fd")
+
+-- stdout, or nil. run_child_process RAISES when the binary can't be spawned
+-- rather than returning false, so an uninstalled zoxide would take the whole
+-- picker down instead of just contributing nothing to it.
+local function capture(argv)
+	local called, ok, out = pcall(wezterm.run_child_process, argv)
+	if called and ok and type(out) == "string" then
+		return out
+	end
+	return nil
+end
+
+local function project_dirs()
+	local seen, dirs = {}, {}
+	local function add(dir)
+		if dir and #dir > 1 and not seen[dir] and exists(dir) then
+			seen[dir] = true
+			table.insert(dirs, dir)
+		end
+	end
+
+	-- zoxide first: its order IS the ranking, so the top of the list is the work in
+	-- flight. Its entries outlive a deleted checkout, hence the exists() gate.
+	local out = capture({ zoxide_bin, "query", "-l" })
+	if out then
+		for line in out:gmatch("[^\r\n]+") do
+			add(line)
+		end
+	end
+
+	-- --prune keeps fd out of the .git it just matched. Depth 4 is exactly
+	-- ~/Developer/<area>/<org>/<repo>/.git — the layout in use, and ~5x faster
+	-- than 5 (measured 0.13s vs 0.44s over ~400 repos) for 38 nested ones missed.
+	out = capture({
+		fd_bin,
+		"--hidden",
+		"--no-ignore",
+		"--prune",
+		"--max-depth",
+		"4",
+		"--type",
+		"d",
+		"--glob",
+		".git",
+		PROJECTS,
+	})
+	if out then
+		for line in out:gmatch("[^\r\n]+") do
+			add((line:gsub("/%.git/?$", "")))
+		end
+	end
+	return dirs
+end
+
+-- tmux-sessionizer's naming rule, so a project answers to the same name in both.
+local function workspace_name(dir)
+	return (dir:match("([^/]+)/?$") or dir):gsub("[%. ]", "_")
+end
+
+local function shorten(dir)
+	local home = wezterm.home_dir or ""
+	if #home > 0 and dir:sub(1, #home) == home then
+		return "~" .. dir:sub(#home + 1)
+	end
+	return dir
+end
+
+local open_project = wezterm.action_callback(function(window, pane, id)
+	if not id then -- nil when cancelled
+		return
+	end
+	local kind, value = id:match("^(%a+):(.*)$")
+	if kind == "ws" then
+		window:perform_action(act.SwitchToWorkspace({ name = value }), pane)
+	elseif kind == "dir" then
+		window:perform_action(act.SwitchToWorkspace({ name = workspace_name(value), spawn = { cwd = value } }), pane)
+	end
+end)
+
+-- What each live workspace HOLDS, so a session line can say something useful
+-- instead of just its name: tab count, and the directory the active tab sits in.
+-- Walks the mux rather than shelling out, so it costs nothing.
+local function workspace_summary()
+	local info = {}
+	local got, windows = pcall(wezterm.mux.all_windows)
+	for _, w in ipairs(got and windows or {}) do
+		local ok, ws = pcall(function()
+			return w:get_workspace()
+		end)
+		if ok and ws then
+			local entry = info[ws] or { tabs = 0, cwd = nil }
+			local tabs = w:tabs()
+			entry.tabs = entry.tabs + #tabs
+			if not entry.cwd then
+				local ok2, cwd = pcall(function()
+					return w:active_pane():get_current_working_dir()
+				end)
+				-- Newer WezTerm hands back a Url object, older ones a plain string.
+				if ok2 and cwd then
+					entry.cwd = type(cwd) == "string" and cwd:gsub("^file://[^/]*", "") or cwd.file_path
+				end
+			end
+			info[ws] = entry
+		end
+	end
+	return info
+end
+
+-- Leader+f: the sessions you have, nothing else. Directories are a different
+-- question and live behind ⌘P → "workspace: open project…" — mixing 500 folders
+-- into this list buried the four things actually running.
+local session_picker = wezterm.action_callback(function(window, pane)
+	local t = active_theme
+	local current = window:active_workspace()
+	local summary = workspace_summary()
+	local got, names = pcall(wezterm.mux.get_workspace_names)
+	names = got and names or {}
+	table.sort(names)
+
+	local choices = {}
+	for _, name in ipairs(names) do
+		local s = summary[name] or { tabs = 0 }
+		local here = name == current
+		-- Formatted labels are explicitly supported: the docs note styling
+		-- sequences are preserved during fuzzy matching without affecting the
+		-- filter, so colour here costs nothing in searchability.
+		table.insert(choices, {
+			id = "ws:" .. name,
+			label = wezterm.format({
+				{ Foreground = { Color = here and t.accent or t.inactive_fg } },
+				{ Text = (here and G.bolt or G.session) .. "  " },
+				{ Attribute = { Intensity = here and "Bold" or "Normal" } },
+				{ Foreground = { Color = t.active_fg } },
+				{ Text = wezterm.pad_right(name, 24) },
+				"ResetAttributes",
+				{ Foreground = { Color = t.inactive_fg } },
+				{ Text = string.format("%2d %s   %s", s.tabs, s.tabs == 1 and "tab " or "tabs", shorten(s.cwd or "")) },
+			}),
+		})
+	end
+
+	if #choices == 0 then
+		window:toast_notification("wezterm", "No workspaces open", nil, 4000)
+		return
+	end
+	window:perform_action(
+		act.InputSelector({
+			title = "sessions",
+			fuzzy = true,
+			fuzzy_description = "session: ",
+			choices = choices,
+			action = open_project,
+		}),
+		pane
+	)
+end)
+
+-- The folder half, kept but moved off Leader+f (⌘P → "workspace: open project…").
+local project_picker = wezterm.action_callback(function(window, pane)
+	local t = active_theme
+	local live = {}
+	local got, names = pcall(wezterm.mux.get_workspace_names)
+	for _, name in ipairs(got and names or {}) do
+		live[name] = true
+	end
+	local choices = {}
+	for _, dir in ipairs(project_dirs()) do
+		local name = workspace_name(dir)
+		table.insert(choices, {
+			id = "dir:" .. dir,
+			label = wezterm.format({
+				{ Foreground = { Color = live[name] and t.accent or t.inactive_fg } },
+				{ Text = (live[name] and G.bolt or G.files) .. "  " },
+				{ Foreground = { Color = t.active_fg } },
+				{ Text = wezterm.pad_right(name, 24) },
+				"ResetAttributes",
+				{ Foreground = { Color = t.inactive_fg } },
+				{ Text = shorten(dir) },
+			}),
+		})
+	end
+	if #choices == 0 then
+		window:toast_notification("wezterm", "No projects found under " .. PROJECTS, nil, 4000)
+		return
+	end
+	window:perform_action(
+		act.InputSelector({
+			title = "projects",
+			fuzzy = true,
+			fuzzy_description = "open project: ",
+			choices = choices,
+			action = open_project,
+		}),
+		pane
+	)
+end)
+
 config.keys = {
 	-- Shift+Enter → CSI-u "Enter+Shift" (\x1b[13;2u) so apps (claude, nvim) insert a
 	-- newline bare AND inside tmux: tmux forwards it through extended-keys (see
 	-- tmux.conf). A bare "\n" works bare but doesn't survive tmux's key handling.
 	{ key = "Enter", mods = "SHIFT", action = act.SendString("\x1b[13;2u") },
-
-	-- Pass through literal Ctrl+a (SOH) — press the leader combo (Ctrl+Shift+a) twice
-	{ key = "a", mods = "LEADER|CTRL|SHIFT", action = act.SendKey({ key = "a", mods = "CTRL" }) },
 
 	-- Splits: create (single-key — visual shape matches the split)
 	{ key = "-", mods = "LEADER", action = act.SplitPane({ direction = "Down", size = { Percent = 50 } }) },
@@ -330,14 +828,24 @@ config.keys = {
 	{ key = "n", mods = "LEADER", action = act.ActivatePaneDirection("Next") },
 	{ key = "p", mods = "LEADER", action = act.ActivatePaneDirection("Prev") },
 
+	-- Splits: cross nvim/tmux/WezTerm boundaries with one motion (see nav above)
+	{ key = "h", mods = "CTRL", action = nav("h", "Left") },
+	{ key = "j", mods = "CTRL", action = nav("j", "Down") },
+	{ key = "k", mods = "CTRL", action = nav("k", "Up") },
+	{ key = "l", mods = "CTRL", action = nav("l", "Right") },
+
 	-- Splits: pane picker overlay
 	{ key = "Space", mods = "LEADER", action = act.PaneSelect },
 
-	-- Splits: zoom / swap / rotate / close
-	{ key = "f", mods = "LEADER", action = act.TogglePaneZoomState },
+	-- Splits: zoom / swap / rotate / close. z, not f — tmux's zoom key, and f is
+	-- the project picker in both layers now.
+	{ key = "z", mods = "LEADER", action = act.TogglePaneZoomState },
 	{ key = "=", mods = "LEADER", action = act.PaneSelect({ mode = "SwapWithActive" }) },
 	{ key = "o", mods = "LEADER", action = act.RotatePanes("Clockwise") },
-	{ key = "q", mods = "LEADER", action = act.CloseCurrentPane({ confirm = false }) },
+	-- confirm=true leans on skip_close_confirmation_for_processes_named, whose
+	-- defaults already cover the shells and tmux: a prompt or a multiplexer closes
+	-- instantly, an editor or an ssh asks first. confirm=false asked nothing, ever.
+	{ key = "q", mods = "LEADER", action = act.CloseCurrentPane({ confirm = true }) },
 
 	-- Splits: resize mode (modal — hjkl/arrows, esc to exit)
 	{ key = "r", mods = "LEADER", action = act.ActivateKeyTable({ name = "resize", one_shot = false, timeout_milliseconds = 2000 }) },
@@ -357,6 +865,8 @@ config.keys = {
 	{ key = "9", mods = "LEADER", action = act.ActivateTab(8) },
 	{ key = "Tab", mods = "LEADER", action = act.ActivateLastTab },
 	{ key = ",", mods = "LEADER", action = rename_tab }, -- tmux's prefix+, (rename-window)
+	{ key = "<", mods = "LEADER|SHIFT", action = act.MoveTabRelative(-1) }, -- tmux's prefix+< (swap-window)
+	{ key = ">", mods = "LEADER|SHIFT", action = act.MoveTabRelative(1) },
 
 	-- Windows
 	{ key = "c", mods = "LEADER|SHIFT", action = act.SpawnWindow },
@@ -366,6 +876,10 @@ config.keys = {
 	{ key = "d", mods = "LEADER", action = act.ScrollByPage(1) },
 	{ key = "g", mods = "LEADER", action = act.ScrollToTop },
 	{ key = "g", mods = "LEADER|SHIFT", action = act.ScrollToBottom },
+	-- Jump by prompt rather than by page — needs the OSC 133 marks the shell
+	-- integration emits (config/shell/inits.zsh), and is inert without them.
+	{ key = "UpArrow", mods = "CMD|SHIFT", action = act.ScrollToPrompt(-1) },
+	{ key = "DownArrow", mods = "CMD|SHIFT", action = act.ScrollToPrompt(1) },
 
 	-- Search scrollback
 	{ key = "/", mods = "LEADER", action = act.Search({ CaseSensitiveString = "" }) },
@@ -392,10 +906,16 @@ config.keys = {
 	-- Launcher menu (btop, yazi, lazygit, etc.)
 	{ key = "m", mods = "LEADER", action = act.ShowLauncherArgs({ flags = "FUZZY|LAUNCH_MENU_ITEMS" }) },
 
-	-- Workspaces
+	-- Workspaces. w = the ones already open (tmux's prefix+s), f = pick a project
+	-- and open one (tmux's prefix+f).
 	{ key = "w", mods = "LEADER", action = act.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES" }) },
+	{ key = "f", mods = "LEADER", action = session_picker },
 	{ key = "}", mods = "LEADER", action = act.SwitchWorkspaceRelative(1) },
 	{ key = "{", mods = "LEADER", action = act.SwitchWorkspaceRelative(-1) },
+
+	-- Detach this tab's domain — only the persistent one supports it, and its
+	-- panes keep running (reattach from the ⌘P palette). A no-op on local panes.
+	{ key = "d", mods = "LEADER|SHIFT", action = act.DetachDomain("CurrentPaneDomain") },
 	{
 		key = "$",
 		mods = "LEADER",
@@ -428,33 +948,21 @@ config.key_tables = {
 	},
 }
 
--- ── Status bar (right side) ──────────────────────────────────
--- Shows: [LEADER] · workspace · key-table · time
+-- ── Status bar ───────────────────────────────────────────────────────────────
+-- Left: the workspace as a pill, in the shape and accent tmux gives the session
+-- on the row directly below — the two bars read as one stack, outer session over
+-- inner. Right: [KEY TABLE] · battery.
+--
+-- Holding the leader FILLS the pill and swaps its glyph for a bolt, which is
+-- exactly what tmux's status-left does when the prefix is held
+-- (`#{?client_prefix,#[reverse],}` + the same two glyphs, restated here). Each
+-- bar lights its own pill for its own prefix, so there is no separate LEADER
+-- badge: the indicator is the thing it applies to. Both states are one cell wide
+-- for the same reason tmux's are — a width change would shove the tabs sideways
+-- on every press.
 config.status_update_interval = 1000
 
-wezterm.on("update-right-status", function(window, _pane)
-	local segments = {}
-	local palette = window:effective_config().resolved_palette
-	local t = theme_for_appearance(window:get_appearance())
-
-	-- Leader indicator (Catppuccin red on base)
-	if window:leader_is_active() then
-		table.insert(segments, { bg = t.leader_bg, fg = t.leader_fg, text = " LEADER " })
-	end
-
-	-- Active key table (Catppuccin yellow on base)
-	local kt = window:active_key_table()
-	if kt then
-		table.insert(segments, { bg = t.ktable_bg, fg = t.ktable_fg, text = " " .. kt:upper() .. " " })
-	end
-
-	-- Workspace
-	table.insert(segments, {
-		bg = palette.tab_bar and palette.tab_bar.active_tab.bg_color or t.active_bg,
-		fg = palette.foreground or t.active_fg,
-		text = " " .. window:active_workspace() .. " ",
-	})
-
+local function render(segments)
 	local elements = {}
 	for _, seg in ipairs(segments) do
 		table.insert(elements, { Background = { Color = seg.bg } })
@@ -463,8 +971,110 @@ wezterm.on("update-right-status", function(window, _pane)
 		table.insert(elements, { Text = seg.text })
 	end
 	table.insert(elements, "ResetAttributes")
+	return wezterm.format(elements)
+end
 
-	window:set_right_status(wezterm.format(elements))
+-- Battery is native, so it costs no subprocess and can be read every tick.
+local function battery()
+	local ok, info = pcall(wezterm.battery_info)
+	if not ok or not info or #info == 0 then
+		return nil
+	end
+	local b = info[1]
+	local pct = math.floor((b.state_of_charge or 0) * 100 + 0.5)
+	-- 0-100 onto the five empty→full glyphs; +1 because Lua indexes from one.
+	local glyph = G.battery[math.min(5, math.floor(pct / 20) + 1)]
+	if b.state == "Charging" then
+		glyph = G.bolt -- charging says more than the level does
+	end
+	return glyph, pct .. "%", pct <= 20 and b.state == "Discharging"
+end
+
+-- CPU / RAM / disk in ONE shell round trip, on a timer rather than per redraw:
+-- update-status fires every second and none of these move that fast. Measured
+-- ~20ms for the batch (iostat was rejected — its two-sample form blocks a full
+-- second), against a 5s refresh, which is also tmux's status-interval.
+--
+-- The arithmetic deliberately matches what tmux's bar shows so the two rows can
+-- never disagree: CPU is summed ps %cpu over core count, RAM is vm_stat's
+-- active+wired+compressed, disk is df on /.
+local METRICS_SH = [[
+ncpu=$(sysctl -n hw.ncpu)
+cpu=$(ps -A -o %cpu= | awk -v n="$ncpu" '{s+=$1} END {printf "%.0f", (s/n > 100 ? 100 : s/n)}')
+ram=$(vm_stat | awk -v total="$(sysctl -n hw.memsize)" '
+  /page size of/{p=$8} /Pages active/{a=$3} /Pages wired/{w=$4} /Pages occupied by compressor/{c=$5}
+  END{gsub(/\./,"",a);gsub(/\./,"",w);gsub(/\./,"",c);printf "%.0f",(a+w+c)*p/total*100}')
+ssd=$(df -h / | awk 'NR==2{gsub(/%/,"",$5);print $5}')
+printf '%s\t%s\t%s' "$cpu" "$ram" "$ssd"
+]]
+
+local metrics = { at = 0 }
+local METRICS_EVERY = 5
+
+local function refresh_metrics()
+	local now = os.time()
+	if now - metrics.at < METRICS_EVERY then
+		return
+	end
+	metrics.at = now
+	-- capture() pcalls: run_child_process raises rather than returning false when
+	-- it can't spawn, and a status bar must never be able to take the GUI down.
+	local out = capture({ "/bin/sh", "-c", METRICS_SH })
+	if out then
+		local cpu, ram, ssd = out:match("^(%S*)\t(%S*)\t(%S*)")
+		if cpu then
+			metrics.cpu, metrics.ram, metrics.ssd = cpu, ram, ssd
+		end
+	end
+end
+
+wezterm.on("update-status", function(window, _pane)
+	local t = theme_for_appearance(window:get_appearance())
+
+	local armed = window:leader_is_active()
+	window:set_left_status(render({
+		{
+			bg = armed and t.accent or t.frame_bg,
+			fg = armed and t.frame_bg or t.accent,
+			text = " " .. (armed and G.bolt or G.session) .. "  " .. window:active_workspace() .. " ",
+		},
+		{ bg = t.frame_bg, fg = t.frame_bg, text = " " },
+	}))
+
+	local segments = {}
+
+	-- Active key table (Catppuccin yellow on base)
+	local kt = window:active_key_table()
+	if kt then
+		table.insert(segments, { bg = t.ktable_bg, fg = t.ktable_fg, text = " " .. kt:upper() .. " " })
+	end
+
+	-- The metric row. Each glyph carries the accent and its value reads plain, so
+	-- the row scans as icon/number pairs rather than one wall of text.
+	refresh_metrics()
+	local cells = {}
+	local function cell(glyph, value, warn)
+		if value then
+			table.insert(cells, { glyph = glyph, value = value, warn = warn })
+		end
+	end
+	cell(G.cpu, metrics.cpu and metrics.cpu .. "%", tonumber(metrics.cpu or 0) >= 90)
+	cell(G.ram, metrics.ram and metrics.ram .. "%", tonumber(metrics.ram or 0) >= 90)
+	cell(G.disk, metrics.ssd and metrics.ssd .. "%", tonumber(metrics.ssd or 0) >= 90)
+	local bat_glyph, bat_pct, bat_low = battery()
+	cell(bat_glyph, bat_pct, bat_low)
+	cell(G.clock, wezterm.strftime("%H:%M"))
+	cell(G.calendar, wezterm.strftime("%a %d %b"))
+
+	for _, c in ipairs(cells) do
+		table.insert(segments, { bg = t.frame_bg, fg = c.warn and t.leader_bg or t.accent, text = " " .. c.glyph })
+		if #c.value > 0 then
+			table.insert(segments, { bg = t.frame_bg, fg = t.frame_fg, text = " " .. c.value })
+		end
+	end
+	table.insert(segments, { bg = t.frame_bg, fg = t.frame_bg, text = "  " })
+
+	window:set_right_status(render(segments))
 end)
 
 -- ── Command-palette: tmux control (⌘P) ───────────────────────────────────────
@@ -485,27 +1095,7 @@ end)
 -- synchronously), so shelling out there throws "attempt to yield from outside a
 -- coroutine" and the palette comes up empty. An action_callback DOES run in a
 -- coroutine, so the `tmux list-sessions` call is deferred to selection time.
-local tmux_bin = (function()
-	-- GUI apps launched by launchd have a minimal PATH and often no $USER, so
-	-- derive the user from $HOME (reliably set) and try absolute paths first. No
-	-- run_child_process here: config eval isn't a coroutine, so it can't yield.
-	local home = wezterm.home_dir or os.getenv("HOME") or ""
-	local user = home:match("([^/]+)/?$") or "" -- nix-darwin: /etc/profiles/per-user/<user>
-	for _, p in ipairs({
-		"/etc/profiles/per-user/" .. user .. "/bin/tmux",
-		home .. "/.nix-profile/bin/tmux",
-		"/run/current-system/sw/bin/tmux",
-		"/opt/homebrew/bin/tmux",
-		"/usr/local/bin/tmux",
-	}) do
-		local fh = io.open(p, "r")
-		if fh then
-			fh:close()
-			return p
-		end
-	end
-	return "tmux" -- fall back to PATH (works when WezTerm is launched from a shell)
-end)()
+local tmux_bin = find_bin("tmux")
 
 -- The tty of the tmux client living in the active tab, or nil. Two traps this
 -- deliberately avoids:
@@ -680,6 +1270,22 @@ wezterm.on("augment-command-palette", function(_window, _pane)
 			brief = "tab: rename…",
 			icon = "md_rename_box",
 			action = rename_tab,
+		},
+		{
+			brief = "workspace: open project…",
+			icon = "md_folder_open",
+			action = project_picker,
+		},
+		-- Persistence, opted into one tab at a time — see the unix_domains block.
+		{
+			brief = "domain: attach persistent (panes survive a restart)",
+			icon = "md_pin",
+			action = act.AttachDomain("persist"),
+		},
+		{
+			brief = "domain: detach (leave the panes running)",
+			icon = "md_pin_off",
+			action = act.DetachDomain("CurrentPaneDomain"),
 		},
 		{
 			brief = "tmux: switch session…",

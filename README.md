@@ -599,21 +599,65 @@ Two modifier **foundations**, set in Karabiner (`home/config/karabiner/karabiner
 | **Hyper** | Right Option → `⌃⌥⇧⌘` | Global namespace — app launch + window/space actions (bound in Raycast's GUI). No app uses all four mods, so nothing collides. |
 | **Caps → Ctrl** | `Caps` = `Ctrl`, held or tapped | The comfortable Ctrl for the terminal/editor (tmux, nvim, zsh vi-mode). A plain remap — a double-tap-for-Esc rule fires on the ordinary Ctrl-Ctrl of a game and pauses it. |
 
-### WezTerm — leader `Ctrl+Shift+a` (= Caps+Shift+a)
+### WezTerm — leader `⌘a`
+
+Cmd, not Ctrl, on purpose: macOS never delivers a Cmd chord to the program
+running inside the terminal, so this leader costs tmux, nvim, zsh and claude
+nothing. Every Ctrl leader takes something — `Ctrl+a` is beginning-of-line
+(`zoptions.zsh`) and `Ctrl+Space` opens blink.cmp — and WezTerm would swallow it
+before the app ever saw it. The workspace pill on the left fills solid and shows
+a bolt while the leader is armed, the same way tmux's session pill does for its
+prefix. On Linux the leader is `Ctrl+;` instead, since Super belongs to the WM.
 
 | Keys | Action |
 |---|---|
-| `⌘P` | command palette (Leader `?` aliases it) — plus `tab: rename…`, `tmux: switch session…`, `tmux: rename session/window…` |
+| `⌘P` | command palette (Leader `?` aliases it) — plus `tab: rename…`, `workspace: open project…`, `domain: attach/detach`, `tmux: switch session…`, `tmux: rename session/window…` |
+| `Ctrl h j k l` | move between panes — **no leader**, and it crosses nvim splits, tmux panes and WezTerm splits alike. Passed straight through when the pane holds nvim or tmux (they own the same keys), or when the tab has only one pane, so `Ctrl-l` still clears the screen |
 | Leader `-` / `\|` | split down / right |
 | Leader `h j k l` · Leader `⇧ hjkl` | focus pane · resize pane |
 | Leader `r` | resize mode (then `hjkl`, `Esc`) |
-| Leader `Space` · `f` · `=` · `o` · `q` | pane picker · zoom · swap · rotate · close |
-| Leader `t` · `[` `]` · `1`–`9` · `Tab` · `,` | new tab · prev/next · jump N · last · rename (empty = back to auto) |
-| Leader `w` · `{` `}` · `$` | workspace switcher · prev/next · rename |
+| Leader `Space` · `z` · `=` · `o` · `q` | pane picker · zoom · swap · rotate · close (asks only when something stateful is running) |
+| Leader `t` · `[` `]` · `1`–`9` · `Tab` · `,` · `⇧ <` `>` | new tab · prev/next · jump N · last · rename (empty = back to auto) · move left/right |
+| Leader `f` · `w` · `{` `}` · `$` | **session picker** (live workspaces only) · launcher list · prev/next · rename |
 | Leader `Enter` / `s` · `y` / `v` · `/` | copy-mode / quick-select · copy / paste · search |
-| Leader `m` · `⇧ f` · `⇧ r` | launcher (btop/yazi/lazygit) · fullscreen · reload |
+| `⌘⇧ ↑` / `⌘⇧ ↓` | jump to the previous / next shell prompt (OSC 133) |
+| Leader `m` · `⇧ f` · `⇧ r` · `⇧ d` | launcher (btop/yazi/lazygit) · fullscreen · reload · detach domain |
 
 Source: `home/config/wezterm/wezterm.lua`.
+
+`f` and `z` are deliberately tmux's keys, not WezTerm's: the session picker and
+zoom are the same keystroke whichever layer you're in. Leader `f` lists **only
+live workspaces** — name, tab count, working directory — because mixing ~550
+project folders into that list buried the handful of things actually running.
+The folders live one step further away, at `⌘P → workspace: open project…`:
+zoxide order first (frecency, so current work floats up), then every git
+checkout under `~/Developer`, each opening a workspace named the way
+`tmux-sessionizer` would name the session.
+
+**The bar.** Tabs are the retro bar with solid powerline wedges, each drawn in
+its own tab's background over the next one's so the run is continuous. That
+choice has one fixed cost: per the docs the retro bar "is rendered using the
+main terminal font", so it is 16pt and `window_frame.font_size` no longer
+reaches it — there is no separate size knob, and the only lever is
+`config.font_size`. Left of the tabs is the workspace pill; right of them,
+CPU · RAM · disk · battery · time · date, in one shell round trip every 5s
+(≈20ms) rather than per redraw. The CPU/RAM/disk arithmetic matches what
+tmux's own bar computes, so the two rows can never disagree.
+
+Every glyph in the config is written as a `\u{...}` escape rather than a literal
+character. That is not style: these are Private Use Area codepoints, and tools
+that rewrite the file silently drop them — it has already happened once here
+(every 3-byte glyph emptied to `""`, so most tabs lost their icon) and once in
+`tmux.conf`, which records the same trap.
+
+**Persistence.** WezTerm panes normally die with the GUI; a unix domain moves
+them into a `wezterm-mux-server` that outlives it (`⌘P → domain: attach…`,
+Leader `⇧ d` to detach). It is opt-in per tab on purpose — process introspection
+is local-panes-only, so a pane in a mux domain reports no foreground process,
+and three things here read it: the tmux theme bridge, the tab-bar icons and
+`Ctrl-hjkl`. Ordinary tabs stay local; opt a tab in when you want it to survive
+a restart. After a `switch` that bumps wezterm, a reattach can fail on a version
+mismatch — `pkill wezterm-mux-server` clears it (and the persisted panes).
 
 ### tmux — prefix `Ctrl+b`
 
@@ -700,6 +744,7 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd 
 <summary><h2>Links</h2></summary>
 
 **Nix layer**
+
 - [Lix](https://lix.systems) — the Nix interpreter/daemon this repo installs
 - [nix-darwin options](https://nix-darwin.github.io/nix-darwin/manual/) — every `system.defaults` / system key
 - [home-manager options](https://nix-community.github.io/home-manager/options.xhtml) — user-layer options
@@ -707,14 +752,17 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd 
 - [MyNixOS — nix-darwin](https://mynixos.com/nix-darwin/options/system.defaults) — searchable defaults reference
 
 **Per-client toolchains**
+
 - [devenv.sh](https://devenv.sh) — per-project reproducible shells
 - [direnv](https://direnv.net) — auto-loads a shell on `cd`
 
 **Tools**
+
 - [WezTerm](https://wezterm.org) · [Neovim](https://neovim.io) / [LazyVim](https://www.lazyvim.org) · [Yazi](https://yazi-rs.github.io) · [lazygit](https://github.com/jesseduffield/lazygit) · [tmux](https://github.com/tmux/tmux/wiki)
 - [Starship](https://starship.rs) · [zoxide](https://github.com/ajeetdsouza/zoxide) · [fzf](https://github.com/junegunn/fzf) · [fzf-tab](https://github.com/Aloxaf/fzf-tab) · [eza](https://eza.rocks) · [bat](https://github.com/sharkdp/bat) · [ripgrep](https://github.com/BurntSushi/ripgrep) · [fd](https://github.com/sharkdp/fd) · [delta](https://github.com/dandavison/delta)
 
 **Theme**
+
 - [Catppuccin](https://catppuccin.com) — the Mocha/Latte palette every tool follows
 - [BasicAppleGuy](https://basicappleguy.com) — the *Topographic Amoeba* wallpapers in `wallpaper/`
 
