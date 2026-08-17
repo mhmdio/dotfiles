@@ -818,6 +818,44 @@ local project_picker = wezterm.action_callback(function(window, pane)
 	)
 end)
 
+-- ── URLs: open one without the mouse ─────────────────────────────────────────
+-- The keyboard twin of the Cmd+click binding above. QuickSelect labels every
+-- URL on screen, you type the label, the OS opens it — no copy mode, no
+-- selection, no reaching for the trackpad. This is the good path; the copy-mode
+-- binding below is only for when you are already in there.
+--
+-- skip_action_on_paste preserves QuickSelect's own case split: a lowercase label
+-- runs the action (opens it), an uppercase label falls back to copying instead.
+-- Patterns are Rust regex, like quick_select_patterns above — not Lua patterns.
+-- \w+:// rather than https?:// so ssh://, git:// and file:// come along, and the
+-- terminating class excludes the brackets and quotes that usually sit around a
+-- URL in prose rather than inside it.
+local open_url = act.QuickSelectArgs({
+	label = "open url",
+	patterns = { "\\b\\w+://[^\\s\"'<>()\\[\\]`]+" },
+	skip_action_on_paste = true,
+	action = wezterm.action_callback(function(window, pane)
+		local url = window:get_selection_text_for_pane(pane)
+		if url and #url > 0 then
+			wezterm.open_with(url)
+		end
+	end),
+})
+
+-- Copy mode's version: open whatever is selected right now. Walking to a URL
+-- with motions is strictly slower than open_url, so this exists for the case
+-- where you are already in copy mode with a selection in hand.
+local open_selection = wezterm.action_callback(function(window, pane)
+	local sel = window:get_selection_text_for_pane(pane)
+	if sel then
+		sel = sel:gsub("^%s+", ""):gsub("%s+$", "")
+		if #sel > 0 then
+			wezterm.open_with(sel)
+		end
+	end
+	window:perform_action(act.CopyMode("Close"), pane)
+end)
+
 config.keys = {
 	-- Shift+Enter → CSI-u "Enter+Shift" (\x1b[13;2u) so apps (claude, nvim) insert a
 	-- newline bare AND inside tmux: tmux forwards it through extended-keys (see
@@ -915,6 +953,8 @@ config.keys = {
 	-- Copy mode / quick select
 	{ key = "Enter", mods = "LEADER", action = act.ActivateCopyMode },
 	{ key = "s", mods = "LEADER", action = act.QuickSelect },
+	-- Label every URL on screen and open the one you name (see open_url).
+	{ key = "o", mods = "LEADER|SHIFT", action = open_url },
 
 	-- Copy / paste
 	{ key = "y", mods = "LEADER", action = act.CopyTo("ClipboardAndPrimarySelection") },
@@ -966,6 +1006,36 @@ config.key_tables = {
 		{ key = "Enter", action = "PopKeyTable" },
 	},
 }
+
+-- Copy mode: EXTEND the built-ins, never assign the table outright. key_tables is
+-- replace-by-name, not merge — config.rs does `tables.by_name.insert(name, table)`
+-- for each entry, so `config.key_tables.copy_mode = {…}` would silently drop all
+-- 62 default vi bindings and leave copy mode with only whatever is listed here.
+-- default_key_tables() hands back those defaults to append to. (Defining `resize`
+-- above is safe for exactly the same reason: it only replaces `resize`.)
+--
+-- wezterm.gui is nil in the mux server, same as in appearance() at the top — so
+-- this is skipped there, which is harmless because key tables are a GUI concern.
+local gui = wezterm.gui
+if gui and gui.default_key_tables then
+	local copy_mode = gui.default_key_tables().copy_mode
+	if copy_mode then
+		for _, k in ipairs({
+			-- '/' is genuinely absent from the defaults, so a search could only be
+			-- started from normal mode (Leader+/). tmux has it inside copy mode, and
+			-- n/N to walk the matches; this restores both.
+			{ key = "/", mods = "NONE", action = act.CopyMode("EditPattern") },
+			{ key = "n", mods = "NONE", action = act.CopyMode("NextMatch") },
+			{ key = "N", mods = "SHIFT", action = act.CopyMode("PriorMatch") },
+			-- Open the current selection. Ctrl+o because plain o and O are both
+			-- taken by the defaults (MoveToSelectionOtherEnd / …Horiz).
+			{ key = "o", mods = "CTRL", action = open_selection },
+		}) do
+			table.insert(copy_mode, k)
+		end
+		config.key_tables.copy_mode = copy_mode
+	end
+end
 
 -- ── Status bar ───────────────────────────────────────────────────────────────
 -- Left: the workspace as a pill, in the shape and accent tmux gives the session

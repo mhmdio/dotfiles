@@ -620,6 +620,7 @@ prefix. On Linux the leader is `Ctrl+;` instead, since Super belongs to the WM.
 | Leader `t` · `[` `]` · `1`–`9` · `Tab` · `,` · `⇧ <` `>` | new tab · prev/next · jump N · last · rename (empty = back to auto) · move left/right |
 | Leader `f` · `w` · `{` `}` · `$` | **session picker** (live workspaces only) · launcher list · prev/next · rename |
 | Leader `Enter` / `s` · `y` / `v` · `/` | copy-mode / quick-select · copy / paste · search |
+| Leader `⇧ o` | label every URL on screen, type the label to open it |
 | `⌘⇧ ↑` / `⌘⇧ ↓` | jump to the previous / next shell prompt (OSC 133) |
 | Leader `m` · `⇧ f` · `⇧ r` · `⇧ d` | launcher (btop/yazi/lazygit) · fullscreen · reload · detach domain |
 
@@ -633,6 +634,21 @@ The folders live one step further away, at `⌘P → workspace: open project…`
 zoxide order first (frecency, so current work floats up), then every git
 checkout under `~/Developer`, each opening a workspace named the way
 `tmux-sessionizer` would name the session.
+
+**Copy mode** is WezTerm's own, entered with Leader `Enter` — the same keystroke
+as tmux's `prefix Enter` — and it is vi throughout: `hjkl`, `w`/`b`/`e`,
+`f`/`F`/`t`/`T` with `;`/`,`, `0`/`^`/`$`, `g`/`G`, `H`/`M`/`L`, `Ctrl-d`/`Ctrl-u`,
+`v` cell / `V` line / `Ctrl-v` block, `y` to yank and close. Four keys are added
+on top of the 62 built-ins: `/` to search from inside copy mode with `n`/`N` to
+walk the matches (tmux has this and WezTerm doesn't bind it), and `Ctrl-o` to
+open the current selection. They are appended to
+`wezterm.gui.default_key_tables().copy_mode` rather than assigned — `key_tables`
+is replace-by-name in the source, so writing the table out would silently drop
+all 62 defaults.
+
+**URLs without the mouse.** Leader `⇧ o` labels every URL on screen; type a
+label and it opens. A lowercase label opens it, an uppercase one copies it
+instead. `⌘`-click still works for the pointer-inclined.
 
 **The bar.** Tabs are the retro bar with solid powerline wedges, each drawn in
 its own tab's background over the next one's so the run is continuous. That
