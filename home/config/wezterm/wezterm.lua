@@ -260,43 +260,62 @@ end
 -- the one place that notices the appearance moving.
 local active_theme = theme_for_appearance(appearance())
 
--- format-tab-title runs on the GUI thread for every tab on every repaint, so it
--- may only touch the pre-computed PaneInformation fields. foreground_process_name
--- is explicitly NOT one of them (the docs flag it as computed-on-access), which is
--- why the process is read off the title instead of queried.
+-- Foreground process, keyed by pane id, refreshed on the status timer below.
+-- The docs put foreground_process_name on the computed-on-access side of
+-- PaneInformation and warn that reading it "may not be cheap to compute" —
+-- format-tab-title runs for every tab on every repaint, which is exactly the
+-- wrong place to pay that. update-status runs once a second, which is plenty for
+-- a value that only changes when you launch something. Rebuilt each tick rather
+-- than updated in place, so panes that close drop out instead of accumulating.
+local pane_prog = {}
+
 wezterm.on("format-tab-title", function(tab, tabs, _panes, _cfg, hover, max_width)
 	local t = active_theme
 	local pane = tab.active_pane
 
-	-- What the tab SAYS. claude reports its version as the process name, so a bare
-	-- pane running it is titled "2.1.220" — the rename tmux's
-	-- automatic-rename-format does, done here for the tmux-less case.
+	-- What the tab RUNS. Three sources, cheapest first. WEZTERM_PROG is the shell
+	-- integration's OSC 1337 and is pre-computed, but it only exists once that
+	-- integration is actually loaded and it does not survive tmux, so it is empty
+	-- more often than not. pane_prog covers everything else. The title is a last
+	-- resort, and is empty for anything that doesn't set one.
+	local prog = ((pane.user_vars or {}).WEZTERM_PROG or ""):match("^%S*") or ""
+	if prog == "" then
+		prog = pane_prog[pane.pane_id] or ""
+	end
+	if prog == "" then
+		prog = (pane.title or ""):match("^%S*") or ""
+	end
+	-- claude reports its version as the process name, so a bare pane running it
+	-- comes back as "2.1.220" — the rename tmux's automatic-rename-format does,
+	-- done here for the tmux-less case.
+	if prog:match("^[0-9][0-9.]*$") then
+		prog = "claude"
+	end
+
+	-- What the tab SAYS, which is a different question: an app is free to set its
+	-- own title (claude writes a progress line into it). An app that sets NO title
+	-- is the case this used to miss — nvim leaves 'title' off by default, so its
+	-- pane title is the empty string, and the tab rendered as a bare index with no
+	-- name and no icon at all. Fall back to whatever the pane is running.
 	local title = tab.tab_title
 	if not title or #title == 0 then
 		title = pane.title or ""
+		if #title == 0 then
+			title = prog
+		end
 		if title:match("^[0-9][0-9.]*$") then
 			title = "claude"
 		end
 	end
 
-	-- What the tab RUNS, which is a different question: an app is free to set its
-	-- own title (claude writes a progress line into it), so the title is only a
-	-- fallback. WEZTERM_PROG is the shell integration's OSC 1337 (see
-	-- config/shell/inits.zsh) and lives on the pre-computed side of
-	-- PaneInformation, unlike foreground_process_name — empty at an idle prompt.
-	local prog = ((pane.user_vars or {}).WEZTERM_PROG or ""):match("^%S*") or ""
-	if prog == "" then
-		prog = (pane.title or ""):match("^%S*") or ""
-	end
-	if prog:match("^[0-9][0-9.]*$") then
-		prog = "claude"
-	end
-
 	-- A title starting outside ASCII is already icon-prefixed — that's tmux's
 	-- set-titles-string ("#{E:@icon} #S"). Stacking ours on top gave every tmux tab
-	-- two glyphs, so trust whoever got there first.
+	-- two glyphs, so trust whoever got there first. An EMPTY title has no first
+	-- byte, and the old `title:byte(1) and …` form read that as "already prefixed"
+	-- and dropped the icon — the other half of the blank nvim tab.
 	local prefix = ""
-	if title:byte(1) and title:byte(1) < 0xEE then
+	local first = title:byte(1)
+	if first == nil or first < 0xEE then
 		prefix = icon_for(prog) .. " "
 	end
 
@@ -1030,6 +1049,27 @@ end
 
 wezterm.on("update-status", function(window, _pane)
 	local t = theme_for_appearance(window:get_appearance())
+
+	-- Refresh the process cache the tab bar reads (see pane_prog). Walks every mux
+	-- window rather than just the one that ticked: the table is rebuilt from
+	-- scratch, so scoping it to this window would blank every other window's tabs
+	-- once a second. all_windows can raise ("cannot get Mux!?"), and a status bar
+	-- must never be able to take the GUI down, so it is pcall'd like the rest.
+	local got, mux_windows = pcall(wezterm.mux.all_windows)
+	if got then
+		local fresh = {}
+		for _, w in ipairs(mux_windows) do
+			for _, mux_tab in ipairs(w:tabs()) do
+				for _, p in ipairs(mux_tab:panes()) do
+					local proc = p:get_foreground_process_name()
+					if proc then
+						fresh[p:pane_id()] = proc:match("[^/]+$")
+					end
+				end
+			end
+		end
+		pane_prog = fresh
+	end
 
 	local armed = window:leader_is_active()
 	window:set_left_status(render({
