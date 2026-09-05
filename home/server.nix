@@ -3,7 +3,7 @@
 # the Linux desktop; none of the desktop weight.
 #
 # It imports shared.nix directly rather than workstation.nix, which is the entire
-# distinction: no wezterm/zed/1Password, no colima VM, no node/bun/pnpm, no media
+# distinction: no zed/1Password, no colima VM, no node/bun/pnpm, no media
 # toolchain. Adding a package to packages/workstation.nix therefore never grows
 # this closure — you have to opt in here, on purpose.
 { pkgs, ... }:

@@ -1,0 +1,98 @@
+# AI AGENT: DO NOT overwrite this file. Only make in-line edits.
+
+##############################################
+#                                            #
+#         terminal — follow the shell        #
+#                                            #
+##############################################
+# Docs: https://superfile.dev/configure/custom-theme/
+#
+# Every other superfile theme hardcodes hex, which pins it to one appearance.
+# This one names ANSI colour SLOTS instead, so the terminal decides what they
+# are: Ghostty paints Catppuccin Latte in light mode and Mocha in dark, and
+# superfile follows along with no wrapper, no second config, and no restart —
+# the same approach as btop's TTY theme and delta/fzf here.
+#
+# How it works: superfile passes every value in this file straight to
+# lipgloss.Color() (src/internal/common/style.go), which accepts "0"–"15" as
+# ANSI palette indices as well as hex. An empty string means "don't set a
+# colour", so the terminal's own default is used — that's exactly how
+# superfile's own transparent_background option is implemented.
+#
+# Slots (as Catppuccin maps them): 1 red · 2 green · 3 yellow · 4 blue
+# 5 pink · 6 teal · 8 surface grey · 12 lavender.
+# Deliberately unused: 0/7/15 (near-black and near-white flip meaning between
+# light and dark, so anything using them would be unreadable in one of the two).
+
+###############################################################################
+#                           Code Syntax Highlighting                          #
+###############################################################################
+
+# Only consulted when code_previewer = "" (builtin chroma). config.toml uses
+# bat, which does its own light/dark switching, so this is a fallback.
+code_syntax_highlight = "catppuccin-mocha"
+
+###############################################################################
+#                                 Base Colors                                 #
+###############################################################################
+
+#-- Full Screen
+# "" = the terminal's default foreground/background, i.e. whatever the current
+# flavour sets. This is the pair that makes light mode work.
+full_screen_fg = ""
+full_screen_bg = ""
+
+#-- Gradient (superfile's logo/progress accent — two colors only)
+gradient_color = ["4", "5"]
+directory_icon_color = ""
+
+#-- File Panel
+file_panel_fg = ""
+file_panel_bg = ""
+file_panel_border = "8"
+file_panel_border_active = "12"
+file_panel_top_directory_icon = "2"
+file_panel_top_path = "4"
+# Foreground-only selection: a hardcoded ANSI background can't stay legible in
+# both flavours, so the cursor line is coloured text on the normal background.
+file_panel_item_selected_fg = "6"
+file_panel_item_selected_bg = ""
+
+#-- Footer
+footer_fg = ""
+footer_bg = ""
+footer_border = "8"
+footer_border_active = "2"
+
+#-- Sidebar
+sidebar_fg = ""
+sidebar_bg = ""
+sidebar_title = "6"
+sidebar_border = "8"
+sidebar_border_active = "1"
+sidebar_item_selected_fg = "6"
+sidebar_item_selected_bg = ""
+sidebar_divider = "8"
+
+#-- Modals
+modal_fg = ""
+modal_bg = ""
+modal_border_active = "8"
+# The two buttons DO keep a solid background — they're meant to read as buttons.
+# Slot 0 is safe as their text colour specifically because it always sits on a
+# saturated red/green fill, never on the terminal background.
+modal_cancel_fg = "0"
+modal_cancel_bg = "1"
+modal_confirm_fg = "0"
+modal_confirm_bg = "2"
+
+#-- Help Menu
+help_menu_hotkey = "6"
+help_menu_title = "5"
+
+#-- Special
+cursor = "4"
+correct = "2"
+error = "1"
+hint = "6"
+cancel = "3"

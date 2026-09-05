@@ -16,8 +16,8 @@
   # Touch ID for sudo. macOS 26 already ships `auth include sudo_local` in
   # /etc/pam.d/sudo, so nix-darwin only drops the file in — no patching of Apple's
   # file, and nothing unmanaged in the way. `reattach` is what makes it usable
-  # here: without pam_reattach, Touch ID never prompts inside tmux, which is where
-  # every sudo actually gets typed. Config changes don't need any of this — they
+  # here: without pam_reattach, Touch ID never prompts inside a multiplexed or
+  # screen-sharing session. Config changes don't need any of this — they
   # go through `make home`, which never touches root.
   security.pam.services.sudo_local = {
     enable = true;
@@ -30,8 +30,8 @@
 
   fonts.packages = with pkgs; [
     maple-mono.NF
-    nerd-fonts.fira-code
     nerd-fonts.hack
+    nerd-fonts.fira-code
     nerd-fonts.jetbrains-mono
   ];
 
@@ -42,7 +42,7 @@
       tilesize = 48;
       persistent-apps = [
         # pinned dock apps, first → last (top → bottom, since the dock is on the right)
-        "/Users/${username}/Applications/Home Manager Apps/WezTerm.app"
+        "/Applications/Ghostty.app"
         "/Applications/Obsidian.app"
         "/Applications/Google Chrome.app"
         "/Applications/Slack.app"
@@ -106,11 +106,12 @@
     };
   };
 
-  # Homebrew = GUI .app casks only; every CLI comes from nixpkgs. nix-darwin drives
-  # `brew bundle`; the zap-prune below removes any cask not in this list (declarative).
-  # Casks are NOT auto-upgraded on switch (see onActivation) — bump them on purpose
-  # with `brew upgrade --cask`. Heads-up: a cask you installed by hand and didn't add
-  # here will be removed on the next switch.
+  # Homebrew = GUI .app casks, plus the rare CLI nixpkgs can't ship current enough
+  # (see `brews` — each one needs a stated reason). nix-darwin drives `brew bundle`;
+  # the zap-prune below removes anything NOT listed here, formulae included, so a
+  # `brew install` you don't declare disappears on the next switch. Nothing is
+  # auto-upgraded on switch (see onActivation) — bump deliberately with
+  # `brew upgrade [--cask] <name>`, or `b up`.
   homebrew = {
     enable = true;
     onActivation = {
@@ -124,24 +125,31 @@
       upgrade = false;
     };
 
+    # CLI formulae — the documented exception to "every CLI comes from nixpkgs".
+    # Re-check these on flake bumps; when nixpkgs catches up, move them to
+    # home/packages/ and drop the entry.
+    brews = [
+      # `spf` — TUI file manager. nixpkgs is stuck on 1.3.3; brew ships 1.6.0, and
+      # home/config/superfile targets the newer config schema. Config is symlinked
+      # from home/darwin.nix.
+      "superfile"
+    ];
+
     casks = [
+      "ghostty" # terminal — auto_updates, so brew won't fight its self-updater
       "karabiner-elements"
       "1password"
       "hiddenbar"
-      "netnewswire"
       "shottr"
-      "telegram"
       "transmission"
       "google-chrome"
       "raycast"
       "obsidian"
-      "discord"
-      "whatsapp"
-      "zoom"
       "dropbox"
       "keepingyouawake"
       "tailscale-app"
       "claude"
+      "codex" # CLI, but cask-only upstream — self-updates like claude (see core.nix)
       "agentsview"
       "google-drive"
       "iina"

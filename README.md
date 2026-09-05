@@ -111,7 +111,7 @@ flowchart LR
 | `home/server.nix` | `nix run .#server` — no make target | `homeConfigurations.<serverUser>-server` · `-aarch64` |
 
 The headless profile importing `shared.nix` **directly** is the whole
-distinction — no WezTerm/Zed/1Password, no colima VM, no node/bun/pnpm, no media
+distinction — no Zed/1Password, no colima VM, no node/bun/pnpm, no media
 toolchain. Adding a tool to `packages/workstation.nix` therefore never grows the
 server closure; you opt in from `server.nix`, on purpose. Both Linux profiles are
 built for `x86_64` and `aarch64`, so a Hetzner box works whichever it is.
@@ -122,7 +122,7 @@ built for `x86_64` and `aarch64`, so a Hetzner box works whichever it is.
 - **One command, reproducible** — `bootstrap.sh` brings up the whole machine; idempotent and safe to re-run.
 - **Cross-platform, one config** — identical CLI environment on macOS, non-NixOS Linux, and headless servers; each profile just stops at a different layer.
 - **Nix-first** — every CLI and runtime from nixpkgs (unstable, latest versions); Homebrew only for GUI `.app`s nixpkgs lacks.
-- **Dotfiles as code** — `~/.config/*` are read-only symlinks from the repo (nvim & Zed kept granular so they keep their own state; WezTerm is copied rather than linked, so its own config watcher still fires).
+- **Dotfiles as code** — `~/.config/*` are read-only symlinks from the repo (nvim & Zed kept granular so they keep their own state).
 - **Theme follows the OS** — Catppuccin Mocha (dark) / Latte (light); no switcher, no rebuild.
 - **One-line tool changes** — add or remove a name in a single file, then `make apply`.
 - **Forkable** — the account is auto-detected; just swap the cask list and it's yours.
@@ -193,10 +193,9 @@ dotfiles/
     ├── linux.nix         # Linux desktop entry point: workstation + Mocha
     ├── server.nix        # headless entry point: shared + Mocha, no desktop weight
     ├── theme-mocha.nix   # catppuccin/nix Mocha — Linux side only; the Mac autoswitches
-    ├── tmux.nix          # tmux via programs.tmux (plugins · status · sessions)
     ├── packages/         # nixpkgs tools — core.nix (everywhere) + workstation.nix (desktop)
     ├── dotfiles/         # → read-only ~/.config symlinks, split the same core/workstation way
-    └── config/           # the actual dotfiles (shell/ nvim/ zed/ wezterm/ …)
+    └── config/           # the actual dotfiles (shell/ nvim/ zed/ ghostty/ …)
 ```
 
 </details>
@@ -228,17 +227,21 @@ curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh |
 | Concern | Managed by |
 |---|---|
 | CLI tools everywhere, laptop or server | **nixpkgs** — `home/packages/core.nix` |
-| JS runtimes (node/bun) + GUI editors (Zed, WezTerm) — desktops only | **nixpkgs** — `home/packages/workstation.nix` |
+| JS runtimes (node/bun) + GUI editor (Zed) — desktops only | **nixpkgs** — `home/packages/workstation.nix` |
 | zsh + plugins (autosuggestions, syntax-highlighting, fzf-tab), direnv | **home-manager** — `home/shared.nix` |
 | Dotfiles (`~/.config/*`) imported as read-only symlinks | **home-manager** — `home/dotfiles/` → `home/config/` |
 | macOS defaults, fonts, the user, system zsh *(macOS only)* | **nix-darwin** — `hosts/mac.nix` |
 | macOS GUI configs (karabiner) + the shuffled wallpaper | **home-manager** — `home/darwin.nix` |
-| GUI `.app` casks (1Password, Chrome, Telegram, …) *(macOS only)* | **Homebrew**, driven declaratively by nix-darwin |
+| GUI `.app` casks (1Password, Chrome, Slack, …) *(macOS only)* | **Homebrew**, driven declaratively by nix-darwin |
 | Per-client toolchains (kubectl, terraform, …) | **devenv.sh** — *never in this repo* |
 
 **Why Homebrew at all?** Almost everything is in Nix — even things that are
-casks/taps elsewhere (`wezterm`, `_1password-cli`, `maple-mono`, the
-`zed-editor` app). Only GUI apps with no good nixpkgs build remain on brew.
+casks/taps elsewhere (`_1password-cli`, `maple-mono`, the
+`zed-editor` app). GUI apps with no good nixpkgs build stay on brew, plus the
+occasional CLI nixpkgs can't ship current enough — those go in `homebrew.brews`
+in `hosts/mac.nix`, one stated reason each (today: `superfile`, where nixpkgs
+sits on 1.3.3 against brew's 1.6.0). The zap-prune cuts both ways: a `brew
+install` you never declared is removed on the next switch.
 
 ### Daily use — `make`
 
@@ -248,7 +251,7 @@ themselves, so the same command works on either. Run `make` on its own for the l
 ```bash
 make            # list every target (with the detected host)
 make apply      # ← the one you want: build + activate this host
-make home       # dotfiles / shell / tmux / nvim only — no sudo, seconds not minutes
+make home       # dotfiles / shell / nvim only — no sudo, seconds not minutes
 make update     # bump EVERYTHING pinned (see below)
 ```
 
@@ -268,7 +271,6 @@ and all three land in `git diff` next to each other:
 |---|---|
 | `flake.lock` | nixpkgs · nix-darwin · home-manager |
 | `home/config/nvim/lazy-lock.json` | via `nvim --headless '+Lazy! update'` |
-| `home/config/yazi/` plugins | vendored in-repo, via `ya pkg upgrade` |
 
 Reaching for `nix flake update` by hand silently skips the last two, and they drift
 quietly. Narrow it with `make update I=nixpkgs` — naming a single input updates
@@ -286,7 +288,7 @@ quietly. Narrow it with `make update I=nixpkgs` — naming a single input update
 |---|---|
 | `make rollback` | activate the previous generation (macOS) |
 | `make gc` | drop old generations, collect garbage, optimise the store |
-| `make cleanup` | `gc` **plus** docker prune and go/brew/yarn caches |
+| `make cleanup` | `gc` **plus** docker prune and go/brew/pnpm caches |
 | `make clean` | just remove `./result` symlinks |
 
 | Setup | |
@@ -333,7 +335,7 @@ progress + a generation diff built in), handy while `brew` reflexes fade:
 | `brew install foo` | add `foo` to `home/packages/core.nix` → `nh darwin switch` |
 | `brew uninstall foo` | remove it from `home/packages/core.nix` → `nh darwin switch` |
 | `brew search foo` | `nh search foo` |
-| `brew upgrade` | **`make update`** — flake.lock *plus* the nvim/yazi plugin pins |
+| `brew upgrade` | **`make update`** — flake.lock *plus* the nvim plugin pins |
 | `brew cleanup` (+ autoremove) | `nh clean all` |
 
 Point `nh` at this repo once so the subcommands need no path argument:
@@ -378,7 +380,7 @@ Then `make apply` (or `make home` if it was only a dotfile). Search names at
 <summary><h2>Packages</h2></summary>
 
 Optional reference — every tool in [`home/packages/`](home/packages) with a
-one-line note (plus fonts from `hosts/mac.nix` and tmux from `home/tmux.nix`). GUI
+one-line note (plus fonts from `hosts/mac.nix`). GUI
 `.app` casks: `homebrew.casks` in `hosts/mac.nix`.
 
 Everything below is in [`core.nix`](home/packages/core.nix) and lands on every
@@ -408,7 +410,6 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 | [zoxide](https://github.com/ajeetdsouza/zoxide) | smarter `cd` |
 | [eza](https://github.com/eza-community/eza) | modern `ls` |
 | [bat](https://github.com/sharkdp/bat) | `cat` + syntax highlighting |
-| [yazi](https://github.com/sxyazi/yazi) | terminal file manager |
 
 **git**
 
@@ -448,7 +449,6 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 | tool | what it is |
 |---|---|
 | [neovim](https://neovim.io) | text editor |
-| [tmux](https://tmux.github.io/) | terminal multiplexer |
 
 **system / disk / containers**
 
@@ -498,9 +498,11 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 
 **AI / agent**
 
-| tool | what it is |
-|---|---|
-| [opencode](https://opencode.ai) | terminal AI coding agent |
+Not in nixpkgs on purpose — claude, opencode and codex each ship their own
+self-updating installer, so pinning them to a flake would freeze them until the
+next `make update`. `ai-update` drives each one's updater and `cc` / `oc` / `cx`
+run them with permissions bypassed (`home/config/shell/ai.zsh`). Worktrees are
+plain `git worktree add`.
 
 **fetch / pretty**
 
@@ -528,7 +530,6 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 | tool | what it is |
 |---|---|
 | [_1password-cli](https://developer.1password.com/docs/cli/) | 1Password CLI (`op`) *(desktop)* |
-| [wezterm](https://wezterm.org) | GPU terminal emulator *(desktop)* |
 | [zed-editor](https://zed.dev) | code editor (CLI: `zeditor`) *(desktop)* |
 
 **fonts & macOS extras (nix)**
@@ -536,7 +537,7 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 | tool | what it is |
 |---|---|
 | [maple-mono](https://github.com/subframe7536/Maple-font) | Maple Mono NF — UI/editor font |
-| [nerd-fonts](https://nerdfonts.com/) | Fira Code · Hack · JetBrains Mono |
+| [nerd-fonts](https://nerdfonts.com/) | Hack |
 | [mas](https://github.com/mas-cli/mas) | Mac App Store CLI |
 
 </details>
@@ -561,14 +562,14 @@ light):
 
 - **bat** → `--theme=auto` + `--theme-dark`/`--theme-light` (both ship with bat)
 - **delta** → `detect-dark-light = auto`
-- **btop** / **tmux** → the terminal's own 16 ANSI colours, so they never need a flavour
+- **btop** → the terminal's own 16 ANSI colours, so it never needs a flavour
 - **nvim** → catppuccin `flavour = "auto"` (nvim detects the terminal background)
-- **yazi** / **glow** → native dark/light auto-detection
-- **WezTerm** & **Zed** detect the OS appearance natively
+- **spf** / **glow** → native dark/light auto-detection
+- **Ghostty** & **Zed** detect the OS appearance natively
 - **starship** uses one palette-agnostic config
 - **wallpaper** → dynamic `.heic`s, each carrying its own light and dark image (see [Thanks](#thanks))
 
-WezTerm itself switches its Catppuccin Mocha/Latte palette with the OS, so the
+Ghostty itself switches its Catppuccin Mocha/Latte palette with the OS (`theme = light:…,dark:…`), so the
 16 ANSI colours everything reads also flip. Toggle the OS appearance — terminal
 tools follow live, GUI apps on relaunch.
 
@@ -597,112 +598,35 @@ Two modifier **foundations**, set in Karabiner (`home/config/karabiner/karabiner
 | Foundation | Keys | Role |
 |---|---|---|
 | **Hyper** | Right Option → `⌃⌥⇧⌘` | Global namespace — app launch + window/space actions (bound in Raycast's GUI). No app uses all four mods, so nothing collides. |
-| **Caps → Ctrl** | `Caps` = `Ctrl`, held or tapped | The comfortable Ctrl for the terminal/editor (tmux, nvim, zsh vi-mode). A plain remap — a double-tap-for-Esc rule fires on the ordinary Ctrl-Ctrl of a game and pauses it. |
+| **Caps → Ctrl** | `Caps` = `Ctrl`, held or tapped | The comfortable Ctrl for the terminal/editor (nvim, zsh vi-mode). A plain remap — a double-tap-for-Esc rule fires on the ordinary Ctrl-Ctrl of a game and pauses it. |
 
-### WezTerm — leader `⌘a`
+### Ghostty
 
-Cmd, not Ctrl, on purpose: macOS never delivers a Cmd chord to the program
-running inside the terminal, so this leader costs tmux, nvim, zsh and claude
-nothing. Every Ctrl leader takes something — `Ctrl+a` is beginning-of-line
-(`zoptions.zsh`) and `Ctrl+Space` opens blink.cmp — and WezTerm would swallow it
-before the app ever saw it. The workspace pill on the left fills solid and shows
-a bolt while the leader is armed, the same way tmux's session pill does for its
-prefix. On Linux the leader is `Ctrl+;` instead, since Super belongs to the WM.
+Deliberately thin — and now the whole story: there is no multiplexer, so Ghostty
+owns tabs, splits and window state itself. The config sets a font and a theme and
+otherwise leaves every default alone:
 
 | Keys | Action |
 |---|---|
-| `⌘P` | command palette (Leader `?` aliases it) — plus `tab: rename…`, `workspace: open project…`, `domain: attach/detach`, `tmux: switch session…`, `tmux: rename session/window…` |
-| `Ctrl h j k l` | move between panes — **no leader**, and it crosses nvim splits, tmux panes and WezTerm splits alike. Passed straight through when the pane holds nvim or tmux (they own the same keys), or when the tab has only one pane, so `Ctrl-l` still clears the screen |
-| Leader `-` / `\|` | split down / right |
-| Leader `h j k l` · Leader `⇧ hjkl` | focus pane · resize pane |
-| Leader `r` | resize mode (then `hjkl`, `Esc`) |
-| Leader `Space` · `z` · `=` · `o` · `q` | pane picker · zoom · swap · rotate · close (asks only when something stateful is running) |
-| Leader `t` · `[` `]` · `1`–`9` · `Tab` · `,` · `⇧ <` `>` | new tab · prev/next · jump N · last · rename (empty = back to auto) · move left/right |
-| Leader `f` · `w` · `{` `}` · `$` | **session picker** (live workspaces only) · launcher list · prev/next · rename |
-| Leader `Enter` / `s` · `y` / `v` · `/` | copy-mode / quick-select · copy / paste · search |
-| Leader `⇧ o` | label every URL on screen, type the label to open it |
-| `⌘⇧ ↑` / `⌘⇧ ↓` | jump to the previous / next shell prompt (OSC 133) |
-| Leader `m` · `⇧ f` · `⇧ r` · `⇧ d` | launcher (btop/yazi/lazygit) · fullscreen · reload · detach domain |
+| `⌘T` · `⌘⇧[` / `⌘⇧]` · `⌃⇥` | new tab · previous / next · cycle |
+| `⌘1..8` | jump to tab |
+| `⌘D` / `⇧⌘D` · `⌘[` / `⌘]` | split right / down · move between splits |
+| `⌘W` | close the split (or the tab, if it's the last one) |
 
-Source: `home/config/wezterm/wezterm.lua`.
+The trade for dropping the multiplexer: **nothing survives closing the window.**
+Long jobs want `nohup`, a launchd agent, or a terminal left open. Appearance follows macOS through one line
+(`theme = light:Catppuccin Latte,dark:Catppuccin Mocha`) with no wrapper and no
+restart, and `macos-titlebar-style = hidden` keeps the chrome out of the way.
 
-`f` and `z` are deliberately tmux's keys, not WezTerm's: the session picker and
-zoom are the same keystroke whichever layer you're in. Leader `f` lists **only
-live workspaces** — name, tab count, working directory — because mixing ~550
-project folders into that list buried the handful of things actually running.
-The folders live one step further away, at `⌘P → workspace: open project…`:
-zoxide order first (frecency, so current work floats up), then every git
-checkout under `~/Developer`, each opening a workspace named the way
-`tmux-sessionizer` would name the session.
-
-**Copy mode** is WezTerm's own, entered with Leader `Enter` — the same keystroke
-as tmux's `prefix Enter` — and it is vi throughout: `hjkl`, `w`/`b`/`e`,
-`f`/`F`/`t`/`T` with `;`/`,`, `0`/`^`/`$`, `g`/`G`, `H`/`M`/`L`, `Ctrl-d`/`Ctrl-u`,
-`v` cell / `V` line / `Ctrl-v` block, `y` to yank and close. Four keys are added
-on top of the 62 built-ins: `/` to search from inside copy mode with `n`/`N` to
-walk the matches (tmux has this and WezTerm doesn't bind it), and `Ctrl-o` to
-open the current selection. They are appended to
-`wezterm.gui.default_key_tables().copy_mode` rather than assigned — `key_tables`
-is replace-by-name in the source, so writing the table out would silently drop
-all 62 defaults.
-
-**URLs without the mouse.** Leader `⇧ o` labels every URL on screen; type a
-label and it opens. A lowercase label opens it, an uppercase one copies it
-instead. `⌘`-click still works for the pointer-inclined.
-
-**The bar.** Tabs are the retro bar with solid powerline wedges, each drawn in
-its own tab's background over the next one's so the run is continuous. That
-choice has one fixed cost: per the docs the retro bar "is rendered using the
-main terminal font", so it is 16pt and `window_frame.font_size` no longer
-reaches it — there is no separate size knob, and the only lever is
-`config.font_size`. Left of the tabs is the workspace pill; right of them,
-CPU · RAM · disk · battery · time · date, in one shell round trip every 5s
-(≈20ms) rather than per redraw. The CPU/RAM/disk arithmetic matches what
-tmux's own bar computes, so the two rows can never disagree.
-
-Every glyph in the config is written as a `\u{...}` escape rather than a literal
-character. That is not style: these are Private Use Area codepoints, and tools
-that rewrite the file silently drop them — it has already happened once here
-(every 3-byte glyph emptied to `""`, so most tabs lost their icon) and once in
-`tmux.conf`, which records the same trap.
-
-**Persistence.** WezTerm panes normally die with the GUI; a unix domain moves
-them into a `wezterm-mux-server` that outlives it (`⌘P → domain: attach…`,
-Leader `⇧ d` to detach). It is opt-in per tab on purpose — process introspection
-is local-panes-only, so a pane in a mux domain reports no foreground process,
-and three things here read it: the tmux theme bridge, the tab-bar icons and
-`Ctrl-hjkl`. Ordinary tabs stay local; opt a tab in when you want it to survive
-a restart. After a `switch` that bumps wezterm, a reattach can fail on a version
-mismatch — `pkill wezterm-mux-server` clears it (and the persisted panes).
-
-### tmux — prefix `Ctrl+b`
-
-| Keys | Action |
-|---|---|
-| Prefix `\|` / `-` | split horizontal / vertical (keep path) |
-| Prefix `h j k l` · Prefix `⇧ HJKL` | select pane · resize |
-| Prefix `f` | session picker popup (`t` in the shell) — `↵` attach · `^x` kill (asks first) · `^/` preview |
-| Prefix `r` | reload config |
-| copy-mode `v` / `y` | begin selection / copy (vi) |
-
-Source: `home/config/tmux/tmux.conf`.
-
-**One session per WezTerm tab.** The tab is the project; tmux windows are tasks
-inside it. Everything that switches sessions keeps that 1:1: the picker (`t`,
-prefix `f`) and `⌘P → tmux: switch session…` *focus the tab* a session is already
-attached to and only open a new tab for a detached one — never `switch-client`,
-which would put two clients on one session and shrink both to the smaller. Tab
-titles follow the session name automatically (`set-titles`), and Leader `,`
-overrides that per tab. Sessions outlive the terminal, so closing WezTerm loses
-nothing; resurrect/continuum bring them back after a reboot.
+Source: `home/config/ghostty/config` — validate edits with `ghostty +validate-config`.
 
 ### Neovim — leader `Space`
 
-Stock **LazyVim** keymaps plus a few plugin rebinds: `Ctrl-h/j/k/l` navigates nvim splits *and* tmux panes (vim-tmux-navigator), `<leader>-` opens yazi at the current file (replacing LazyVim's split-below), `Ctrl-Up` resumes it. `Space` opens which-key. See the [LazyVim keymaps](https://www.lazyvim.org/keymaps).
+Stock **LazyVim** keymaps plus a few rebinds: `Ctrl-h/j/k/l` navigates nvim splits, `<leader>_` opens superfile as a file picker (`--chooser-file`, see `lua/config/keymaps.lua`). `Space` opens which-key. See the [LazyVim keymaps](https://www.lazyvim.org/keymaps).
 
-### Yazi & Lazygit
+### superfile & Lazygit
 
-- **Yazi**: `g i` → lazygit; otherwise stock vi-style nav. (`home/config/yazi/keymap.toml`)
+- **superfile** (`spf`): `e` opens the file in nvim, `z` the zoxide jump modal, `Q` quits and cd's the shell there. (`home/config/superfile/config.toml`)
 - **Lazygit**: stock defaults. (`home/config/lazygit/config.yml`)
 
 ### Shell — zsh vi-mode + fzf
@@ -715,7 +639,7 @@ Stock **LazyVim** keymaps plus a few plugin rebinds: `Ctrl-h/j/k/l` navigates nv
 | `Esc` · `v` | vi normal mode · edit command in `$EDITOR` |
 | `Ctrl+A/E` · `Ctrl+K/U/W` · `Ctrl+Y` | line start/end · kill line/line-back/word · yank |
 
-Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd · `v`/`n` nvim · `lg` lazygit · `hn` Hacker News · `g` + git shorthands. Type **`help`** for a colour cheatsheet of the modern-CLI replacements. Source: `home/config/shell/*.zsh`.
+Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `spf` file manager · `v`/`n` nvim · `lg` lazygit · `hn` Hacker News · `g` + git shorthands. Type **`help`** for a colour cheatsheet of the modern-CLI replacements. Source: `home/config/shell/*.zsh`.
 
 </details>
 
@@ -774,7 +698,7 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `y` yazi-cd 
 
 **Tools**
 
-- [WezTerm](https://wezterm.org) · [Neovim](https://neovim.io) / [LazyVim](https://www.lazyvim.org) · [Yazi](https://yazi-rs.github.io) · [lazygit](https://github.com/jesseduffield/lazygit) · [tmux](https://github.com/tmux/tmux/wiki)
+- [Neovim](https://neovim.io) / [LazyVim](https://www.lazyvim.org) · [superfile](https://superfile.dev) · [lazygit](https://github.com/jesseduffield/lazygit)
 - [Starship](https://starship.rs) · [zoxide](https://github.com/ajeetdsouza/zoxide) · [fzf](https://github.com/junegunn/fzf) · [fzf-tab](https://github.com/Aloxaf/fzf-tab) · [eza](https://eza.rocks) · [bat](https://github.com/sharkdp/bat) · [ripgrep](https://github.com/BurntSushi/ripgrep) · [fd](https://github.com/sharkdp/fd) · [delta](https://github.com/dandavison/delta)
 
 **Theme**

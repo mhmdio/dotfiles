@@ -1,26 +1,34 @@
-# AI coding tools — `ai` command.
-#   ai up   update installed AI CLIs (skips ones not installed or Nix-managed)
-# Order is deliberate: Claude Code first, then OpenCode, then the rest.
-# Requires gum (https://charm.land/libs/).
+# AI coding tools — full-permission aliases + the updater.
+# Sourced from ~/.config/shell/all
 #
-# ─── Tools (edit/add lines in _ai_upgrade to change the set or order) ────────
-# Claude Code .. https://code.claude.com/docs   (`claude update`)
-# OpenCode ..... https://opencode.ai             (Nix-managed → make update)
-# Codex ........ https://github.com/openai/codex (`npm update -g @openai/codex`)
+#   cc / oc / cx   run that CLI right here, permission prompts off
+#   ai-update      update the installed AI CLIs
+#
+# Worktrees used to live here (`ai <name>` created one and launched a CLI in it).
+# Plain `git worktree add` covers it, so the wrapper is gone rather than kept as
+# a second, diverging convention.
+#
+# ─── Tools ───────────────────────────────────────────────────────────────────
+# Claude Code .. https://code.claude.com/docs/en/cli-reference
+#                full permission: --dangerously-skip-permissions · update: `claude update`
+# OpenCode ..... https://opencode.ai/docs/permissions
+#                full permission: --auto (auto-approves everything not explicitly
+#                denied — opencode has no harder bypass) · update: `opencode upgrade`
+# Codex ........ https://developers.openai.com/codex/developer-commands
+#                full permission: --yolo (= --dangerously-bypass-approvals-and-sandbox)
+#                update: `brew upgrade --cask codex` — it's a cask (hosts/mac.nix), and
+#                casks are NOT upgraded on switch (homebrew.onActivation.upgrade = false)
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ai_usage() {
-  command cat <<'EOF'
-Usage: ai <command>
+# Run one CLI in the current directory with permissions bypassed.
+alias cc='claude --dangerously-skip-permissions'
+alias oc='opencode --auto'
+alias cx='codex --yolo'
 
-Commands:
-  up    Update installed AI coding tools (Claude Code, OpenCode, Codex)
-EOF
-}
-
-# Upgrade one tool via its self-updater. Skips when the binary is missing, or
-# when Nix owns it: a /nix/store binary is read-only, so its self-updater can't
-# replace itself and just stalls — Nix tools upgrade with `make update && make apply`.
+# ── updates ──────────────────────────────────────────────────────────────────
+# Upgrade one tool via its own updater. Skips when the binary is missing, or when
+# Nix owns it: a /nix/store binary is read-only, so its self-updater can't replace
+# itself and just stalls — Nix tools upgrade with `make update && make apply`.
 #   $1 = display name   $2 = binary to check   $3.. = upgrade command
 _ai_upgrade_one() {
   local name="$1" bin="$2"; shift 2
@@ -43,7 +51,7 @@ _ai_upgrade_one() {
   fi
 }
 
-_ai_upgrade() {
+ai-update() {
   command -v gum &>/dev/null || { echo "gum is required (Nix-managed): make apply" >&2; return 1; }
 
   gum style --border rounded --padding "0 1" --bold "🤖 AI Tools Upgrade"
@@ -51,15 +59,7 @@ _ai_upgrade() {
   # Order: Claude Code first, then OpenCode, then the rest.
   _ai_upgrade_one "Claude Code" claude   claude update
   _ai_upgrade_one "OpenCode"    opencode opencode upgrade
-  _ai_upgrade_one "Codex"       codex    npm update -g @openai/codex
+  _ai_upgrade_one "Codex"       codex    brew upgrade --cask codex
 
   gum style --bold --foreground 10 "🎉 Done!"
-}
-
-ai() {
-  case "${1:-}" in
-    up)                 shift; _ai_upgrade "$@" ;;
-    ""|help|-h|--help)  _ai_usage ;;
-    *) echo "ai: unknown command: $1" >&2; _ai_usage; return 1 ;;
-  esac
 }

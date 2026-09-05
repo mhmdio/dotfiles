@@ -46,22 +46,32 @@ alias hn='hackernews_tui'    # Hacker News reader TUI (binary is underscored)
 alias v='nvim'
 alias zed='zeditor'          # nixpkgs zed-editor ships its CLI as `zeditor`
 n() { if [[ $# -eq 0 ]]; then nvim .; else nvim "$@"; fi; }
-alias oc='opencode'          # AI agent (`cc` = Claude Code, see claude.zsh)
+# AI CLIs live in ~/.config/shell/ai.zsh: `cc`/`oc`/`cx` run claude/opencode/codex
+# here with permissions bypassed; `ai-update` upgrades all three.
 alias reload='exec zsh'      # re-exec the shell cleanly
 
-# tmux: `t` = fzf project picker → per-project session (also prefix+f in tmux).
-alias t='tmux-sessionizer'
-alias ta='tmux attach'
-alias tl='tmux ls'
+# No multiplexer: Ghostty's own tabs and splits are the whole story (⌘T, ⌘D,
+# ⇧⌘D). Nothing survives closing the window, so long jobs want nohup or a
+# launchd agent rather than a detached pane.
 
-# yazi (https://yazi-rs.github.io) — `y` opens yazi and cd's to its exit dir.
-y() {
-  local tmp cwd
-  tmp="$(mktemp -t yazi-cwd.XXXXXX)"
-  yazi "$@" --cwd-file="$tmp"
-  IFS= read -r -d '' cwd < "$tmp"
-  [[ -n "$cwd" && "$cwd" != "$PWD" ]] && builtin cd -- "$cwd"
-  rm -f -- "$tmp"
+# superfile (https://superfile.dev) — file navigation.
+# cd_on_quit makes spf write `cd '<dir>'` to its lastdir file on exit (verified
+# in its quitSuperfile()); sourcing it HERE — not in a subshell — is what moves
+# this shell. `Q` inside spf forces that even with the config off. Directory
+# learning doesn't depend on any of it: spf calls zoxide's Add() itself as you
+# navigate, and `z` inside spf queries the same database.
+#
+# The path comes from `spf pl --lastdir-file` rather than being hardcoded:
+# superfile resolves it through adrg/xdg, so it moves with XDG_STATE_HOME. Asked
+# for after the TUI exits so the extra exec never delays startup.
+# --print-last-dir is NOT usable here: it prints to stdout, which is where the
+# TUI itself draws.
+spf() {
+  command spf "$@"
+  local last; last="$(command spf pl --lastdir-file 2>/dev/null)"
+  [[ -n "$last" && -f "$last" ]] || return
+  builtin source "$last"
+  command rm -f -- "$last"
 }
 
 # ── Git (lazygit `lg` for the TUI; these for quick one-offs) ───

@@ -14,7 +14,6 @@
   imports = [
     ./packages/core.nix
     ./dotfiles/core.nix
-    ./tmux.nix
   ];
 
   # Pin `nixpkgs` to this flake's locked input, so `nix run nixpkgs#…` and comma

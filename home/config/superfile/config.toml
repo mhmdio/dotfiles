@@ -1,0 +1,85 @@
+# AI AGENT: DO NOT overwrite this file. Only make in-line edits.
+
+# ============================================
+# SUPERFILE CONFIGURATION
+# ============================================
+# Docs: https://superfile.dev/configure/superfile-config/
+#
+# Only keys that differ from superfile's own defaults are set here.
+# ignore_missing_fields silences the "missing field" warning for everything
+# left out, so a superfile release that adds new keys won't nag about this
+# file (which is a read-only store symlink and can't be auto-fixed).
+#
+# Paths are XDG already: superfile resolves them with adrg/xdg, and
+# config/shell/envs.zsh exports XDG_CONFIG_HOME / XDG_DATA_HOME /
+# XDG_STATE_HOME — so config is ~/.config/superfile, data is
+# ~/.local/share/superfile, the log is ~/.local/state/superfile/superfile.log.
+# (Without those vars adrg/xdg would use ~/Library/Application Support on macOS,
+# which is what the upstream docs table describes.)
+
+ignore_missing_fields = true
+
+###############################################################################
+#                                   Defaults                                  #
+###############################################################################
+
+#-- File editor (`e` inside spf) and directory editor (`E`)
+# nvim runs as a child of spf, in the terminal spf is already drawing into; spf
+# resumes when you quit it. (This used to route through a shim that split a new
+# multiplexer pane instead — gone with the multiplexer.)
+#
+# NOTE: Enter is a different code path — it hands the file to the OS default
+# application (macOS `open`), NOT to these. Use `e` to edit.
+editor = "nvim"
+dir_editor = "nvim"
+
+#-- cd on quit
+# Writes `cd '<dir>'` to ~/.local/state/superfile/lastdir on exit; the `spf` shell
+# function in config/shell/aliases.zsh sources it so THIS shell follows along.
+# `Q` quits with the cd even when this is false.
+cd_on_quit = true
+
+#-- Don't phone home on exit; the binary is Homebrew-managed (hosts/mac.nix),
+# so `brew upgrade superfile` — or `b up` — owns updates, not superfile itself.
+auto_check_update = false
+
+#-- Preview panel open by default, with the file's info footer
+default_open_file_preview = true
+show_panel_footer_info = true
+
+###############################################################################
+#                                   Styling                                   #
+###############################################################################
+
+#-- Theme
+# "terminal" paints from the terminal's own 16 ANSI colours instead of hardcoded
+# hex, so it follows Ghostty's Catppuccin latte/mocha as macOS switches
+# appearance — the same trick btop's TTY theme uses. See theme/terminal.toml.
+theme = "terminal"
+
+#-- Transparent background
+# Belt and braces with the theme above: superfile skips painting a background
+# entirely, so the terminal's own background (light or dark) shows through.
+transparent_background = true
+
+#-- Code previewer
+# bat, not the builtin chroma highlighter: bat already selects its Catppuccin
+# flavour from the terminal background (see home/dotfiles/core.nix), so file
+# previews follow light/dark for free too.
+code_previewer = "bat"
+
+#-- Nerd Font icons (fonts come from hosts/mac.nix)
+nerdfont = true
+
+###############################################################################
+#                                   Plugins                                   #
+###############################################################################
+
+#-- zoxide navigation modal — press `z` inside spf to jump by frecency.
+# Two-way: superfile also calls zoxide's Add() on every directory you navigate
+# into (model.go, trackDirectoryWithZoxide), so browsing in spf trains `z`.
+zoxide_support = true
+
+#-- Detailed metadata needs exiftool, which isn't installed; the builtin
+# metadata panel still works. Add exiftool to packages/ to flip this on.
+metadata = false

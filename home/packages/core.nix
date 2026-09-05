@@ -5,6 +5,9 @@
 #
 # The claude CLI is deliberately absent: it stays on its own installer so it
 # self-updates, instead of being frozen until the next `make update` + apply.
+# Same for codex (a Homebrew cask in hosts/mac.nix) and opencode, which uses its
+# own installer into ~/.opencode/bin so `opencode upgrade` works — that dir is
+# prepended to PATH in config/shell/envs.zsh.
 { pkgs, lib, ... }:
 {
   home.packages =
@@ -20,13 +23,13 @@
       unzip
       p7zip
 
-      # search / nav / viewers
+      # search / nav / viewers (file manager is superfile — `spf`, a brew formula
+      # on macOS; see hosts/mac.nix for why it isn't nixpkgs)
       ripgrep
       fd
       fzf
       zoxide
       eza
-      yazi
 
       # git (delta = diff pager; gh + gh-dash come from programs.gh — see shared.nix)
       git
@@ -46,7 +49,7 @@
       gcc
       tree-sitter
 
-      # editor (tmux comes from programs.tmux — see home/tmux.nix)
+      # editor
       neovim
 
       # system / disk
@@ -80,8 +83,13 @@
       hyperfine
       tealdeer
 
-      # AI / agent
-      opencode
+      # secrets — sops-encrypted files with age keys (1Password/`op` still owns
+      # live credentials; these are for anything committed to a repo encrypted)
+      age
+      sops
+
+      # AI / agent — see the header note: claude, codex and opencode all ship via
+      # their own self-updating installers, so none of them is a nixpkgs package.
 
       # fetch / pretty
       fastfetch

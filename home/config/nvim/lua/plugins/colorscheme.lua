@@ -11,7 +11,7 @@
 -- catppuccin-<flavour>, which both of those then resolve correctly.
 --
 -- transparent_background stays OFF, and there's nothing left for it to fix:
--- WezTerm is opaque now (wezterm.lua). Turning it ON was the other way to close
+-- Ghostty is opaque now (config/ghostty/config). Turning it ON was the other way to close
 -- the seam between an opaque editor and a translucent window, but it costs the
 -- editor its own background — every cell falls back to the default one, so
 -- CursorLine, Pmenu and floats composite against the desktop instead of layering.

@@ -30,8 +30,7 @@ let
 in
 {
   xdg.configFile = {
-    # whole-dir tools (tmux is managed via programs.tmux — see home/tmux.nix)
-    "yazi".source = ../config/yazi;
+    # whole-dir tools
     "git".source = ../config/git;
 
     # gh/config.yml is managed by programs.gh (see shared.nix), not symlinked here.
@@ -81,4 +80,5 @@ in
     run rm -f "$HOME/.config/lazygit/config.yml"
     run install -m 0644 ${../config/lazygit/config.yml} "$HOME/.config/lazygit/config.yml"
   '';
+
 }

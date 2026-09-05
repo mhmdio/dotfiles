@@ -1,0 +1,11 @@
+font-family = Maple Mono NF
+font-size = 16
+
+theme = light:Catppuccin Latte,dark:Catppuccin Mocha
+
+window-decoration = auto
+macos-titlebar-style = hidden
+
+# No keybind overrides: Ghostty owns tabs and splits now that there is no
+# multiplexer to defer to. ⌘T tab · ⌘D / ⇧⌘D split · ⌘W close · ⌘⇧[ / ⌘⇧] and
+# ⌃⇥ move between tabs · ⌘[ / ⌘] between splits.

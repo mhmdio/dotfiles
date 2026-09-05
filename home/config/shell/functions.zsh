@@ -71,4 +71,4 @@ lip() {
   (( found )) || echo "No active forwards"
 }
 
-# AI coding tools (`ai-upgrade`) live in ~/.config/shell/ai.zsh
+# AI coding tools — `cc`/`oc`/`cx` and `ai-update` — live in ~/.config/shell/ai.zsh

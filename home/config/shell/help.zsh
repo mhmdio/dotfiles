@@ -32,7 +32,7 @@ files & nav|eza|eza|ls|eza -l --icons --git
 files & nav|bat|bat|cat / less|bat flake.nix
 files & nav|fd|fd|find|fd ".nix$"
 files & nav|z|zoxide|cd|z dotfiles
-files & nav|y|yazi|ranger / nnn|y
+files & nav|spf|spf|Finder / ranger|spf
 files & nav|dust|dust|du|dust ~/Downloads
 files & nav|duf|duf|df|duf
 search & text|rg|rg|grep|rg TODO
@@ -68,7 +68,9 @@ shell & docs|pandoc|pandoc|doc converter|pandoc in.md -o out.pdf
 shell & docs|,|,|run any nix pkg|, cowsay hi
 shell & docs|gum|gum|shell-script UI|gum choose a b c
 shell & docs|pwgen|pwgen|password gen|pwgen -s 20 1
-shell & docs|opencode|opencode|AI pair CLI|opencode
+shell & docs|cc|claude|AI pair CLI|cc
+shell & docs|oc|opencode|AI pair CLI|oc
+shell & docs|cx|codex|AI pair CLI|cx
 tui apps|hn|hackernews_tui|Hacker News|hn
 tui apps|bagels|bagels|spreadsheet|bagels
 tui apps|harlequin|harlequin|psql / DB GUI|harlequin file.db

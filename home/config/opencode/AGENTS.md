@@ -1,6 +1,6 @@
 # Agent Rules 
 
-- The year is 2026. You're an AI coding agent in WezTerm on macOS (Apple Silicon).
+- The year is 2026. You're an AI coding agent in Ghostty on macOS (Apple Silicon).
 - Be concise. Ask when unsure — don't guess. 
 - Suggest the simpler approach first.
 - Automate anything I do repeatedly. 
@@ -20,8 +20,9 @@ Declarative machine. Source of truth is the flake at `~/Developer/dotfiles`
 (nix-darwin + home-manager, Lix daemon). Edit the repo, then apply — hand edits don't stick.
 
 - Dotfiles: Nix-managed (not chezmoi), symlinked read-only into `~/.config`. Edit in the repo.
-- CLI tools: nixpkgs in `home/packages.nix` (not brew, not mise).
-- GUI apps: Homebrew casks only, declared in `hosts/mac.nix` — that list is authoritative.
+- CLI tools: nixpkgs in `home/packages/` — `core.nix` (all profiles) or `workstation.nix` (GUI machines). Not brew, not mise.
+- GUI apps: Homebrew casks, declared in `hosts/mac.nix` — that list is authoritative.
+  A few CLIs are brew formulae there too (`brews`), each with a stated reason.
 - Per-project toolchains: devenv.sh + direnv, scoped to each project's repo.
 - Apply: `nix run .#mac`. Fresh machine: `./bootstrap.sh`.
 - Theme: Catppuccin, auto-follows the macOS light/dark appearance.
@@ -29,8 +30,8 @@ Declarative machine. Source of truth is the flake at `~/Developer/dotfiles`
 ## Tools
 
 - Editor: Zed (vim mode, CLI `zeditor`); sometimes nvim (LazyVim).
-- WezTerm terminal · Chrome browser · Obsidian notes · Docker (colima VM) · Raycast (⌘Space).
-- Shell: zsh. Helpers live in `home/config/shell/` (e.g. `cc` = Claude Code worktree).
+- Ghostty terminal · Chrome browser · Obsidian notes · Docker (colima VM) · Raycast (⌘Space).
+- Shell: zsh. Helpers live in `home/config/shell/` (e.g. `spf` = files).
 
 ## Secrets
 
@@ -38,9 +39,11 @@ Declarative machine. Source of truth is the flake at `~/Developer/dotfiles`
 
 ## MCPs & search
 
-- Prefer a CLI over an MCP (e.g. `gh`, not a GitHub MCP).
-- `context7` for library docs · `exa` to search online.
-- Load the `get-code-context-exa` skill before any code-related web search.
+- Prefer a CLI over an MCP. GitHub → `gh`. AWS → `aws` (profiles are in `~/.aws/config`; ask which one).
+- Enabled MCPs: `linear` (issues) · `vanta` (compliance).
+- For library docs and anything online, use the built-in `websearch` / `webfetch`.
+  Check the installed source first (lockfile, `node_modules`, vendored code) — it
+  is the version actually running, unlike whatever a search returns.
 
 ## Docker
 

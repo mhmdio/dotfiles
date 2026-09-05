@@ -44,6 +44,24 @@ in
     '';
   };
 
+  # Ghostty (cask, see hosts/mac.nix). A plain read-only symlink is fine here —
+  # unlike lazygit, Ghostty only ever READS its config; reloading is
+  # cmd+shift+, and it never writes the file back. Validate edits with
+  # `ghostty +validate-config` before applying.
+  xdg.configFile."ghostty/config".source = ./config/ghostty/config;
+
+  # superfile (`spf`) — a Homebrew formula, not nixpkgs (reason in hosts/mac.nix),
+  # so its config lives on the macOS-only layer alongside it.
+  #
+  # Symlinked file-by-file rather than as a whole directory on purpose: superfile
+  # rewrites its bundled themes into ~/.config/superfile/theme/ whenever its
+  # themeFileVersion changes, so that directory has to stay writable. Our theme is
+  # called "terminal", a name no bundled theme uses, so it is never clobbered.
+  # No XDG wiring needed — superfile resolves paths with adrg/xdg and
+  # config/shell/envs.zsh already exports XDG_CONFIG_HOME.
+  xdg.configFile."superfile/config.toml".source = ./config/superfile/config.toml;
+  xdg.configFile."superfile/theme/terminal.toml".source = ./config/superfile/theme/terminal.toml;
+
   # Wallpaper: shuffled from wallpaper/mac on every switch, and hourly after that.
   # Both paths call the same script, so there is one definition of "pick one".
   home.activation.wallpaper = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

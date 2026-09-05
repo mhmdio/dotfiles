@@ -158,10 +158,9 @@ fi
 # --- Done -------------------------------------------------------------------
 printf '\n%s%s  ✓ dotfiles ready%s\n' "$GREEN" "$B" "$R"
 if [ "$OS" = "Darwin" ]; then
-  info "opening WezTerm — your themed terminal with the right fonts…"
-  open "$HOME/Applications/Home Manager Apps/WezTerm.app" 2>/dev/null \
-    || open -a WezTerm 2>/dev/null \
-    || warn "open WezTerm yourself for the Nerd-Font icons"
+  info "opening Ghostty — your themed terminal with the right fonts…"
+  open -a Ghostty 2>/dev/null \
+    || warn "open Ghostty yourself for the Nerd-Font icons"
   info "apply future changes with: ${B}nix run .#mac${R}"
 else
   info "open a new shell; apply future changes with: ${B}nix run .#linux${R}"

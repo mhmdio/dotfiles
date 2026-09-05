@@ -37,8 +37,8 @@ Type "clear"
 Enter
 Sleep 400ms
 
-# yazi — terminal file manager with a live preview pane
-Type "yazi"
+# spf — terminal file manager with a live preview pane
+Type "spf"
 Enter
 Sleep 1.5s
 Down@600ms 5

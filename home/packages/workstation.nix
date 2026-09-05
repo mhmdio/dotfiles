@@ -17,7 +17,7 @@
     nodejs_24
     bun
     pnpm
-    uv # Python runtime/installer; `uvx` runs the AWS MCP servers in opencode.json
+    uv # Python runtime/installer; `uvx` runs one-off Python tools (MCP servers etc.)
     devenv # per-client reproducible shells (devenv.sh) + direnv
 
     # media (transcode/convert helpers in config/shell/functions.zsh)
@@ -25,16 +25,18 @@
     imagemagick
     yt-dlp # video/audio downloader — YouTube + 1000s of sites (`yt-dlp <url>`)
 
+    # cloud — credentials/profiles live in ~/.aws/config, never in this repo
+    awscli2 # `aws` CLI — used directly by agents instead of an AWS MCP server
+    cloudlens # k9s-like TUI for browsing AWS/GCP resources — `cloudlens`
+
     # interactive TUI apps
     posting # API client TUI — terminal Postman (`posting`)
     harlequin # SQL IDE for the terminal — `harlequin`
     bagels # expense tracker TUI — `bagels`
     hackernews-tui # Hacker News reader TUI (alias: hn)
-    cloudlens # k9s-like TUI for browsing AWS/GCP resources — `cloudlens`
 
     # GUI apps from nixpkgs
     _1password-cli # `op` CLI
-    wezterm # terminal
     zed-editor # editor (CLI: zeditor)
   ];
 }
