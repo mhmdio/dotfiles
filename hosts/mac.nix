@@ -25,6 +25,17 @@
     reattach = true;
   };
 
+  # ...and no prompt at all for the one command `apply.sh` escalates. Scoped to
+  # darwin-rebuild rather than a blanket rule, but be clear about what it buys:
+  # `darwin-rebuild switch --flake <anything>` runs arbitrary activation code as
+  # root, so this makes anything that can run as this user root-equivalent, and
+  # the dotfiles repo a credential worth protecting. apply.sh skips its `sudo -v`
+  # priming when this rule is live (`sudo -n -l darwin-rebuild`), since -v
+  # validates for ALL commands and would prompt regardless.
+  security.sudo.extraConfig = ''
+    ${username} ALL=(root) NOPASSWD: /run/current-system/sw/bin/darwin-rebuild
+  '';
+
   # System zsh wires Nix paths into every login shell via /etc/zshrc. The three
   # opt-outs remove work that /etc/zshrc did before ~/.zshrc even started, all of
   # it either duplicated or immediately overwritten downstream.

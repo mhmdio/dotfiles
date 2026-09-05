@@ -66,8 +66,16 @@ fi
 case "$PLATFORM" in
   mac)
     step "apply  .#mac   ·   sudo darwin-rebuild switch"
-    info "caching sudo credentials up front (one prompt)…"
-    sudo -v || die "sudo authentication failed"
+    # A NOPASSWD rule for darwin-rebuild (hosts/mac.nix) makes the priming
+    # pointless AND counterproductive: `sudo -v` validates for every command, so
+    # it would prompt even though the one command we run needs no password.
+    # `sudo -n -l <cmd>` asks "is this allowed without a prompt?" without running it.
+    if sudo -n -l darwin-rebuild >/dev/null 2>&1; then
+      info "darwin-rebuild is passwordless here — no sudo prompt"
+    else
+      info "caching sudo credentials up front (one prompt)…"
+      sudo -v || die "sudo authentication failed"
+    fi
     before="$(readlink -f /run/current-system 2>/dev/null || true)"
     run_with_progress verbose sudo darwin-rebuild switch --flake ".#mac" \
       || die "switch failed — see the build log above" "$?"
