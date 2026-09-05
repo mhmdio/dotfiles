@@ -9,30 +9,14 @@
   {
     "context": "Workspace",
     "bindings": {
-      // "shift shift": "file_finder::Toggle"
-    },
-  },
-  {
-    "context": "Editor && vim_mode == insert",
-    "bindings": {
-      // "j k": "vim::NormalBefore"
-    },
-  },
-  {
-    "context": "Workspace",
-    "bindings": {
       "alt-cmd-p": [
         "projects::OpenRecent",
         {
           "create_new_window": false
         }
-      ]
-    }
-  },
-  {
-    // ctrl-r is fzf history in the terminal; unbind Zed's OpenRecent so it passes through
-    "context": "Workspace",
-    "bindings": {
+      ],
+      // Ctrl-R belongs to Atuin's history search in the terminal panel; drop
+      // Zed's OpenRecent so the keystroke reaches the shell.
       "ctrl-r": null
     }
   }
