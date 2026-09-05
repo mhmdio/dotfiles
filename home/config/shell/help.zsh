@@ -38,7 +38,7 @@ files & nav|duf|duf|df|duf
 search & text|rg|rg|grep|rg TODO
 search & text|sd|sd|sed|sd foo bar file.txt
 search & text|choose|choose|cut / awk|echo a b c | choose 1
-search & text|fzf|fzf|fuzzy picker|vim "$(fzf)"
+search & text|fzf|fzf|fuzzy picker|nvim "$(fzf)"
 search & text|ast-grep|ast-grep|grep for code|ast-grep -p 'console.log($A)'
 git|lg|lazygit|git CLI|lg
 git|lwt|lazyworktree|git worktree add|lwt
@@ -72,7 +72,7 @@ shell & docs|cc|claude|AI pair CLI|cc
 shell & docs|oc|opencode|AI pair CLI|oc
 shell & docs|cx|codex|AI pair CLI|cx
 tui apps|hn|hackernews_tui|Hacker News|hn
-tui apps|bagels|bagels|spreadsheet|bagels
+tui apps|bagels|bagels|expense tracker|bagels
 tui apps|harlequin|harlequin|psql / DB GUI|harlequin file.db
 tui apps|cloudlens|cloudlens|aws / gcloud UI|cloudlens
 media|yt-dlp|yt-dlp|youtube-dl|yt-dlp -f mp4 <url>

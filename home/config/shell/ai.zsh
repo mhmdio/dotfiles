@@ -1,5 +1,5 @@
 # AI coding tools — full-permission aliases + the updater.
-# Sourced from ~/.config/shell/all
+# Sourced from ~/.config/shell/all.zsh
 #
 #   cc / oc / cx   run that CLI right here, permission prompts off
 #   ai-update      update the installed AI CLIs
