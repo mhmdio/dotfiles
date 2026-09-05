@@ -1,62 +1,84 @@
-_shell_name="${ZSH_VERSION:+zsh}"
-_shell_name="${_shell_name:-bash}"
+# Interactive init, in load order. Two rules govern this file:
+#   1. anything touching PATH or fpath runs BEFORE compinit — the dump is built
+#      from fpath, so a late addition is invisible to completion;
+#   2. anything that would fork a process per shell gets cached.
 
-# Completion system early, before any compdef.
-if [[ -n "$ZSH_VERSION" ]]; then
-  mkdir -p "$XDG_CACHE_HOME/zsh" # compinit won't create the dump's parent dir
-  autoload -Uz compinit && compinit -C -d "$XDG_CACHE_HOME/zsh/zcompdump"
-fi
+_zcache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+[[ -d $_zcache ]] || mkdir -p "$_zcache"
 
-# No theme glue here: each tool reads the terminal's colors and autoswitches itself.
-
-if command -v starship &>/dev/null; then
-  if [[ "$_shell_name" == "bash" ]]; then
-    # clear stale readline state so the prompt doesn't smear after SIGQUIT etc.
-    __sanitize_prompt() { printf '\r\033[K'; }
-    PROMPT_COMMAND="__sanitize_prompt${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
-  fi
-  eval "$(starship init "$_shell_name")"
-fi
-
-command -v zoxide &>/dev/null && eval "$(zoxide init "$_shell_name")"
-
-# WezTerm shell integration: OSC 7 (cwd), OSC 133 (prompt/output marks), OSC 1337
-# (user vars). OSC 133 is the part that isn't already covered — WezTerm resolves
-# the cwd from the process group leader on macOS without OSC 7 — and it's what
-# makes ⌘⇧↑/↓ jump between prompts and lets a click select a whole command's
-# output. Sourced after starship so its precmd hook lands last. Path comes from
-# $_NIX_WEZTERM_SH (dotfiles/workstation.nix); unset on a headless profile.
-if [[ -n "$ZSH_VERSION" && "$TERM_PROGRAM" == "WezTerm" && -r "${_NIX_WEZTERM_SH:-}" ]]; then
-  source "$_NIX_WEZTERM_SH"
-fi
-
-unset _shell_name
-
-# brew (GUI casks) puts /opt/homebrew first; re-prepend nix so its tools win.
+# ── PATH & fpath ─────────────────────────────────────────────────────────────
+# Static equivalent of `eval "$(brew shellenv)"`, which cost ~31ms and forked
+# path_helper a second time on top. /opt/homebrew/etc/paths contains exactly
+# bin + sbin, so this prepend is what path_helper produced — verified, not
+# assumed. The fpath line is the reason this block moved above compinit: it used
+# to run after, so brew's completions could never reach the dump.
 if [[ -x /opt/homebrew/bin/brew ]]; then
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-  export PATH="/etc/profiles/per-user/$USER/bin:/run/current-system/sw/bin:$PATH"
-  [[ -n "$ZSH_VERSION" ]] && typeset -U path
+  export HOMEBREW_PREFIX=/opt/homebrew
+  export HOMEBREW_CELLAR=/opt/homebrew/Cellar
+  export HOMEBREW_REPOSITORY=/opt/homebrew
+  export INFOPATH="/opt/homebrew/share/info${INFOPATH:+:$INFOPATH}"
+  fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
+  path=(/opt/homebrew/bin /opt/homebrew/sbin $path)
 fi
 
-# fzf + fzf-tab: sourced here (after compinit, before the plugins below) because
-# fzf-tab must wrap the completion widget and load before syntax-highlighting.
+# Precedence, decided here so it lives in one place: ~/.opencode/bin (its own
+# installer, see envs.zsh) beats nix, and nix beats brew. envs.zsh sets the
+# opencode entry for non-interactive shells too; re-asserting it here is what
+# survives brew's prepend above. typeset -U keeps the first copy of each.
+path=("$HOME/.opencode/bin" /etc/profiles/per-user/"$USER"/bin /run/current-system/sw/bin $path)
+typeset -U path fpath
+
+# ── Completion ───────────────────────────────────────────────────────────────
+# The only compinit that runs: the system-wide one is off (programs.zsh
+# .enableGlobalCompInit, hosts/mac.nix), so this replaces a full ~545ms scan.
+# The dump is keyed to the nix profile's store path, which is the one thing that
+# changes when fpath changes — so a switch rebuilds it exactly once and every
+# later shell takes the cheap -C path. A plain `-C` against a fixed filename is
+# what silently froze completions for three months: new tools were never picked
+# up because -C never rescans.
+_zprof=${${:-/etc/profiles/per-user/$USER}:A}
+_zdump="$_zcache/zcompdump-${_zprof:t}"
+[[ -s $_zdump ]] || command rm -f "$_zcache"/zcompdump-*(N)  # prune older generations
+autoload -Uz compinit && compinit -C -d "$_zdump"
+unset _zprof _zdump
+
+# ── Cached tool inits ────────────────────────────────────────────────────────
+# `<tool> init zsh` output is static (verified identical across runs) but each
+# fork cost 23-29ms. Cache it, keyed on the binary's store path so a version
+# bump regenerates on its own and there is nothing to invalidate by hand.
+_zsh_cached_init() {  # $1 = binary (also cache name); "$@" = command to capture
+  local bin=${commands[$1]}
+  [[ -n $bin ]] || return 0
+  local f="$_zcache/init-$1-${${bin:A:h:h}:t}.zsh"
+  if [[ ! -s $f ]]; then
+    command rm -f "$_zcache"/init-"$1"-*(N)
+    "$@" >| "$f" 2>/dev/null || { command rm -f "$f"; return 0; }
+  fi
+  source "$f"
+}
+
+_zsh_cached_init starship init zsh
+_zsh_cached_init zoxide init zsh
+
+# fzf + fzf-tab: after compinit (fzf-tab wraps the completion widget), before
+# syntax-highlighting.
 source "$HOME/.config/shell/fzf.zsh"
 
-# Atuin: SQLite-backed shell history on Ctrl-R (replaces fzf's history widget —
-# fzf.zsh skips its own ^R bind when atuin is present). --disable-up-arrow keeps
-# ↑ as prefix history-search. Sourced after fzf so atuin wins ^R; before the
-# zsh-syntax-highlighting plugin (which must stay last). Run `atuin import auto`
-# once to backfill existing history.
-if [[ -n "$ZSH_VERSION" && -t 0 && -t 1 ]] && command -v atuin &>/dev/null; then
-  eval "$(atuin init zsh --disable-up-arrow)"
+# Atuin: SQLite-backed history on Ctrl-R (fzf.zsh skips its own ^R bind when
+# atuin is present). --disable-up-arrow keeps ↑ as prefix search. After fzf so
+# atuin wins ^R; before syntax-highlighting, which must stay last. Run
+# `atuin import auto` once to backfill.
+if [[ -t 0 && -t 1 ]]; then
+  _zsh_cached_init atuin init zsh --disable-up-arrow
 fi
 
 # Plugins: autosuggestions then syntax-highlighting (must be last). Paths come
-# from $_NIX_ZSH_* (shared.nix); guarded so re-sourcing won't re-wrap ZLE widgets.
-if [[ -n "$ZSH_VERSION" && -t 0 && -t 1 ]]; then
+# from $_NIX_ZSH_* (shared.nix); guarded so re-sourcing won't re-wrap widgets.
+if [[ -t 0 && -t 1 ]]; then
   (( ${+functions[_zsh_autosuggest_start]} )) || \
-    source "${_NIX_ZSH_AUTOSUGGESTIONS:-/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh}"
+    source "$_NIX_ZSH_AUTOSUGGESTIONS"
   [[ -n "${ZSH_HIGHLIGHT_VERSION:-}" ]] || \
-    source "${_NIX_ZSH_SYNTAX_HIGHLIGHTING:-/opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh}"
+    source "$_NIX_ZSH_SYNTAX_HIGHLIGHTING"
 fi
+
+unset -f _zsh_cached_init; unset _zcache  # keep the interactive namespace clean

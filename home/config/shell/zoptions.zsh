@@ -1,11 +1,11 @@
-# Vi key bindings — matches nvim/wezterm copy-mode mental model.
+# Vi key bindings — matches nvim/ghostty copy-mode mental model.
 # Esc enters normal mode. (Caps is a plain Ctrl — see karabiner.json.)
 bindkey -v
 # Wait after ESC before deciding it's a standalone Esc (centiseconds).
 # Too low (e.g. 1 = 10ms) and the ESC that prefixes arrow keys (ESC [ A) gets
 # read as "enter normal mode" before the rest arrives → arrows break, esp. in
-# tmux. 20 (200ms) still feels instant for Esc but lets escape sequences through.
-# (Pairs with `escape-time 10` in ~/.config/tmux/tmux.conf.)
+# a multiplexer. 20 (200ms) still feels instant for Esc but lets escape
+# sequences through.
 export KEYTIMEOUT=20
 # Keep familiar Ctrl chords working in vi insert mode
 bindkey -M viins '^A' beginning-of-line
@@ -40,8 +40,8 @@ bindkey "^[[C" forward-char
 bindkey "^[[D" backward-char
 
 # No CHASE_LINKS: it resolves symlinks on cd, and every ~/.config/* here is a
-# home-manager symlink — `cd ~/.config/wezterm` would land in a read-only
-# /nix/store/…-hm_wezterm (and show that path in the prompt).
+# home-manager symlink — `cd ~/.config/ghostty` would land in a read-only
+# /nix/store/…-hm_ghostty (and show that path in the prompt).
 
 # Do not autocomplete hidden files unless explicitly starting with dot
 zstyle ':completion:*' match-hidden-files off
@@ -57,18 +57,12 @@ zstyle ':completion:*' list-dirs-first true
 setopt COMPLETE_IN_WORD
 setopt ALWAYS_TO_END
 
-# Colored completion listings
-zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+# No list-colors here: nothing sets LS_COLORS (eza is the ls, and it has its own
+# palette), and fzf-tab owns the completion menu anyway — `menu no` in fzf.zsh.
 
-# Additional zsh-specific enhancements
-# Share history between sessions
+# Share history between sessions. APPEND_HISTORY is already zsh's default, and
+# HIST_IGNORE_DUPS is subsumed by the ALL_DUPS form below.
 setopt SHARE_HISTORY
-
-# Append to history file, don't overwrite
-setopt APPEND_HISTORY
-
-# Don't record duplicate commands
-setopt HIST_IGNORE_DUPS
 setopt HIST_IGNORE_ALL_DUPS
 
 # Remove superfluous blanks before recording

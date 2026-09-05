@@ -4,7 +4,7 @@
 
 # ff: fuzzy-find with preview; eff: pick a file and open in $EDITOR
 alias ff="fzf --preview '[ -d {} ] && eza -TL2 --icons --color=always {} || bat --style=numbers --color=always {}'"
-alias eff='$EDITOR $(ff)'
+alias eff='$EDITOR "$(ff)"'
 
 # ── Environment (sources + look & feel) ──────────────────────────────────────
 # Use fd: fast, respects .gitignore, includes hidden, skips .git
@@ -46,24 +46,21 @@ if command -v fzf &>/dev/null; then
     _fzf_shell_dir="/usr/share/fzf"
   fi
 
-  if [[ -n "$BASH_VERSION" ]]; then
-    [[ -f "$_fzf_shell_dir/completion.bash"   ]] && source "$_fzf_shell_dir/completion.bash"
-    [[ -f "$_fzf_shell_dir/key-bindings.bash" ]] && source "$_fzf_shell_dir/key-bindings.bash"
-  elif [[ -n "$ZSH_VERSION" && -t 0 && -t 1 ]]; then
+  if [[ -t 0 && -t 1 ]]; then
     [[ -f "$_fzf_shell_dir/completion.zsh" ]] && source "$_fzf_shell_dir/completion.zsh"
     if [[ -f "$_fzf_shell_dir/key-bindings.zsh" ]]; then
       source "$_fzf_shell_dir/key-bindings.zsh"
       # Ctrl-R → fzf history widget (now that the widget is defined). This binding
       # survives the later `bindkey -v` in zoptions, so vi insert mode keeps it.
       # Skip it when Atuin is installed — Atuin owns Ctrl-R instead (see inits.zsh).
-      command -v atuin &>/dev/null || bindkey -M viins '^R' fzf-history-widget
+      (( ${+commands[atuin]} )) || bindkey -M viins '^R' fzf-history-widget
     fi
   fi
   unset _fzf_shell_dir
 fi
 
 # ── fzf-tab (zsh, interactive) — MUST load after compinit ─────────────────────
-if [[ -n "$ZSH_VERSION" && -t 0 && -t 1 ]]; then
+if [[ -t 0 && -t 1 ]]; then
   # Guard the source against double-loading (re-wraps the completion widget);
   # the zstyles below are idempotent so they're safe to re-apply.
   (( ${+functions[fzf-tab-complete]} )) || \

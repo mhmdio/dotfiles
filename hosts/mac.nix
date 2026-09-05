@@ -25,8 +25,17 @@
     reattach = true;
   };
 
-  # System zsh wires Nix paths into every login shell via /etc/zshrc.
-  programs.zsh.enable = true;
+  # System zsh wires Nix paths into every login shell via /etc/zshrc. The three
+  # opt-outs remove work that /etc/zshrc did before ~/.zshrc even started, all of
+  # it either duplicated or immediately overwritten downstream.
+  programs.zsh = {
+    enable = true;
+    # config/shell/inits.zsh runs the one compinit, after it has finished
+    # extending fpath — a second one here just doubled the work.
+    enableGlobalCompInit = false;
+    enableBashCompletion = false; # nothing here ships bash-only completions
+    promptInit = ""; # starship is the prompt; this set `prompt suse` first
+  };
 
   fonts.packages = with pkgs; [
     maple-mono.NF
