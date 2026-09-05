@@ -14,6 +14,13 @@
 -- dir_editor = nvim (home/config/superfile/config.toml), so opening anything
 -- from inside spf comes back to nvim.
 local function superfile_pick()
+  -- Read this BEFORE opening the float: nvim_open_win enters the new scratch
+  -- buffer, after which `%` is that buffer and this always fell back to cwd.
+  local start = vim.fn.expand("%:p:h")
+  if start == "" then
+    start = vim.fn.getcwd()
+  end
+
   local chooser = vim.fn.tempname()
   local buf = vim.api.nvim_create_buf(false, true)
   vim.bo[buf].bufhidden = "wipe"
@@ -29,12 +36,6 @@ local function superfile_pick()
     style = "minimal",
     border = "rounded",
   })
-
-  -- Start in the current file's directory, falling back to cwd for [No Name].
-  local start = vim.fn.expand("%:p:h")
-  if start == "" then
-    start = vim.fn.getcwd()
-  end
 
   local on_exit = function()
     -- Scheduled: on_exit can fire in a context where window/buffer calls aren't
@@ -58,4 +59,10 @@ local function superfile_pick()
   vim.cmd.startinsert()
 end
 
-vim.keymap.set("n", "<leader>_", superfile_pick, { desc = "superfile (pick a file)" })
+-- lua/ ships to every profile (home/dotfiles/core.nix), but superfile is a
+-- macOS Homebrew formula — nixpkgs is on 1.3.3 and no Linux profile installs
+-- it. Map only where the binary exists, rather than hand Linux a key that
+-- fails with "spf: command not found".
+if vim.fn.executable("spf") == 1 then
+  vim.keymap.set("n", "<leader>_", superfile_pick, { desc = "superfile (pick a file)" })
+end
