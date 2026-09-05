@@ -1,6 +1,6 @@
 add_newline = true
 command_timeout = 200
-format = "[$directory$git_branch$git_status]($style)$pulumi$line_break$character"
+format = "[$directory$git_branch$git_status]($style)$terraform$pulumi$line_break$character"
 # AWS sits on the right of the input line: it's ambient state, not something you
 # read before typing, and off the left it stops pushing the cursor around when a
 # profile is exported. zsh redraws it as RPROMPT and hides it if a long command
@@ -23,19 +23,29 @@ format = "[$symbol$branch]($style) "
 style = "italic cyan"
 
 [git_status]
+# One style for the block, overridden per state inline — `[text](colour)` works
+# inside each variable. The colours are ANSI names, not hex, so they resolve
+# through the terminal palette and stay correct in Latte and Mocha alike, the
+# same bargain as delta, fzf, btop and the superfile theme.
+#
+# Every state is spelled out. Four of these used to be "", which suppressed
+# starship's ASCII defaults and left staged, deleted, renamed and stashed
+# invisible — `git add` changed nothing in the prompt. Glyphs are the Codicon
+# diff family (added/modified/removed/renamed read as one set), all verified
+# present in Maple Mono NF.
 format     = '[$all_status$ahead_behind]($style)'
 style      = "cyan"
-ahead      = "⇡${count} "
-diverged   = "⇕⇡${ahead_count}⇣${behind_count} "
-behind     = "⇣${count} "
-conflicted = " "
-up_to_date = " "
-untracked  = "? "
-modified   = " "
-stashed    = ""
-staged     = ""
-renamed    = ""
-deleted    = ""
+conflicted = "[](bold red) "            # cod-merge
+staged     = "[](green) "               # cod-diff_added
+modified   = "[](yellow) "              # cod-diff_modified
+deleted    = "[](red) "                 # cod-diff_removed
+renamed    = "[](purple) "              # cod-diff_renamed
+stashed    = "[](blue) "                # cod-archive
+untracked  = "[?](bright-black) "
+up_to_date = "[](green) "               # fa-check
+ahead      = "[⇡${count}](green) "
+behind     = "[⇣${count}](red) "
+diverged   = "[⇕⇡${ahead_count}⇣${behind_count}](yellow) "
 
 [aws]
 format = '[$symbol$profile( \[$duration\])]($style)'
@@ -45,3 +55,13 @@ symbol = ' '
 [pulumi]
 symbol = ' '
 format = '[$symbol$stack]($style) '
+
+# Terraform: presence only. $workspace is the default and is deliberately out —
+# workspaces go unused here, so it would render a constant "default" on every
+# .tf directory. $version is out too: it shells out to `terraform version`,
+# which is slow, and terraform comes from a devenv shell rather than the login
+# PATH, so it would usually resolve to nothing anyway.
+[terraform]
+symbol = '󱁢 '
+format = '[$symbol]($style)'
+style = 'bold purple'
