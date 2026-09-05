@@ -36,11 +36,29 @@ typeset -U path fpath
 # later shell takes the cheap -C path. A plain `-C` against a fixed filename is
 # what silently froze completions for three months: new tools were never picked
 # up because -C never rescans.
-_zprof=${${:-/etc/profiles/per-user/$USER}:A}
-_zdump="$_zcache/zcompdump-${_zprof:t}"
-[[ -s $_zdump ]] || command rm -f "$_zcache"/zcompdump-*(N)  # prune older generations
-autoload -Uz compinit && compinit -C -d "$_zdump"
-unset _zprof _zdump
+#
+# The profile sits in a different place per platform: nix-darwin + home-manager
+# use /etc/profiles/per-user, standalone home-manager on Linux uses
+# ~/.nix-profile. Probe rather than assume — a path that does not exist comes
+# back from `:A` unresolved, which would key the dump on the bare username and
+# so never change it again.
+_zprof=
+for _p in /etc/profiles/per-user/$USER "$HOME/.local/state/nix/profiles/home-manager" "$HOME/.nix-profile"; do
+  [[ -e $_p ]] && { _zprof=${_p:A}; break; }
+done
+
+autoload -Uz compinit
+if [[ -n ${_zprof:t} ]]; then
+  _zdump="$_zcache/zcompdump-${_zprof:t}"
+  [[ -s $_zdump ]] || command rm -f "$_zcache"/zcompdump-*(N)  # prune older generations
+  compinit -C -d "$_zdump"
+else
+  # No nix profile to key on (this file is normally deployed by one). Nothing
+  # reliable to invalidate against, so pay for a real scan rather than serve a
+  # dump that can never go stale in a way we would notice.
+  compinit -d "$_zcache/zcompdump"
+fi
+unset _zprof _zdump _p
 
 # ── Cached tool inits ────────────────────────────────────────────────────────
 # `<tool> init zsh` output is static (verified identical across runs) but each
