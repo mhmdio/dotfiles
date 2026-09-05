@@ -1,4 +1,4 @@
-# ============================================================================
+ # ============================================================================
 # dotfiles — repo operations. Thin wrappers over the flake apps + bootstrap.sh,
 # so `nix run .#mac` / `.#linux` stay the source of truth (apply.sh stages the
 # tree, builds via nom, prints the nvd diff). Targets auto-detect macOS vs Linux.
@@ -41,7 +41,7 @@ switch: apply ## Alias for `apply`
 # --driver-version 1, which is what tells it to leave the Nix profile to the
 # system. Same evaluation as `apply` too: the derivation is read out of the darwin
 # config, not a parallel homeConfigurations output that could drift from it.
-home: ## Apply the user layer only — dotfiles, shell, tmux, nvim (no sudo)
+home: ## Apply the user layer only — dotfiles, shell, nvim (no sudo)
 ifeq ($(UNAME),Darwin)
 	@out=$$(nix build --no-link --print-out-paths \
 	  '.#darwinConfigurations.$(HOST).config.home-manager.users.$(USER).home.activationPackage') \
@@ -89,24 +89,15 @@ fmt: ## Format every *.nix with nixfmt (nix fmt)
 lint: ## Fast statix lint, no build (nix run nixpkgs#statix)
 	nix run nixpkgs#statix -- check .
 
-update: ## Bump flake inputs + nvim/yazi plugins — one input only: `make update I=nixpkgs`
+update: ## Bump flake inputs + nvim plugins — one input only: `make update I=nixpkgs`
 	nix flake update $(I)
-# Both plugin sets are pinned in-repo — nvim's lazy-lock.json is symlinked out of
-# the store, yazi's plugins are vendored — so these write straight here and show
-# up in `git diff` next to flake.lock. Skipped when updating a single input:
-# `make update I=nixpkgs` means "just that input".
-#
-# yazi: the deployed ~/.config/yazi is a read-only store symlink, so `ya pkg
-# upgrade` there dies with "Failed to write package.toml" — point it at the repo.
-# --discard is needed because the vendored copies no longer match the hashes
-# recorded in package.toml (they carry no local edits — checked in git).
+# nvim's lazy-lock.json is symlinked out of the store, so this writes straight
+# here and shows up in `git diff` next to flake.lock. Skipped when updating a
+# single input: `make update I=nixpkgs` means "just that input".
 ifeq ($(strip $(I)),)
 	@if command -v nvim >/dev/null 2>&1; then nvim --headless '+Lazy! update' +qa; \
 	 else echo "  nvim not installed — skipped its plugins"; fi
-	@if command -v ya >/dev/null 2>&1; then \
-	   YAZI_CONFIG_HOME=$(CURDIR)/home/config/yazi ya pkg upgrade --discard; \
-	 else echo "  ya not installed — skipped yazi's plugins"; fi
-	@git diff --stat -- home/config/nvim/lazy-lock.json home/config/yazi | tail -1
+	@git diff --stat -- home/config/nvim/lazy-lock.json | tail -1
 endif
 
 rollback: ## Activate the previous generation
@@ -124,17 +115,17 @@ gc: ## Delete old generations, collect garbage, optimise the store
 clean: ## Remove ./result build symlinks
 	rm -f result result-*
 
-cleanup: ## Reclaim disk — docker prune + nix GC + go/brew/yarn caches (skips missing tools)
+cleanup: ## Reclaim disk — docker prune + nix GC + go/brew/pnpm caches (skips missing tools)
 	@echo "▸ docker prune (skipped if the daemon is down)…"
 	-@command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && docker system prune -a --volumes -f
 	@echo "▸ nix garbage collection — system + user generations + store optimise…"
 	sudo nix-collect-garbage -d
 	nix-collect-garbage -d
 	nix store optimise
-	@echo "▸ tool caches — go / brew / yarn (skipped if absent)…"
+	@echo "▸ tool caches — go / brew / pnpm (skipped if absent)…"
 	-@command -v go   >/dev/null 2>&1 && go clean -cache
 	-@command -v brew >/dev/null 2>&1 && brew cleanup
-	-@command -v yarn >/dev/null 2>&1 && yarn cache clean
+	-@command -v pnpm >/dev/null 2>&1 && pnpm store prune
 
 # ── setup ───────────────────────────────────────────────────────────────────
 bootstrap: ## Fresh machine / full re-provision (runs ./bootstrap.sh)

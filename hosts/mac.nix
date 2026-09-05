@@ -51,8 +51,6 @@
   fonts.packages = with pkgs; [
     maple-mono.NF
     nerd-fonts.hack
-    nerd-fonts.fira-code
-    nerd-fonts.jetbrains-mono
   ];
 
   system.defaults = {

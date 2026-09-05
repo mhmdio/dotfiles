@@ -1,7 +1,7 @@
 {
   description = "Bottom-up dev machine (Lix → nix-darwin → home-manager → devenv)";
 
-  # Unstable channel: tools track upstream latest (yazi, neovim, …).
+  # Unstable channel: tools track upstream latest (neovim, superfile, …).
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
@@ -163,18 +163,5 @@
       # desktop layer — see home/server.nix for exactly what that drops.
       homeConfigurations."${serverUser}-server" = serverMain;
       homeConfigurations."${serverUser}-server-aarch64" = serverArm;
-
-      # WSL2 (roadmap) — full NixOS-in-WSL, not standalone home-manager. Sketch;
-      # add `inputs.nixos-wsl.url = "github:nix-community/NixOS-WSL/main";` then:
-      #   nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
-      #     system = linuxSystem;
-      #     specialArgs = { inherit inputs; username = "youruser"; };
-      #     modules = [
-      #       inputs.nixos-wsl.nixosModules.default
-      #       inputs.home-manager.nixosModules.home-manager
-      #       { wsl.enable = true; wsl.defaultUser = "youruser";
-      #         home-manager.users.youruser = import ./home/shared.nix; }
-      #     ];
-      #   };  # inside WSL: sudo nixos-rebuild switch --flake .#wsl
     };
 }

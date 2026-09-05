@@ -33,7 +33,7 @@
   );
   home.stateVersion = "25.11";
 
-  # git/theme are managed as raw dotfiles, not via programs.* (see dotfiles.nix).
+  # git/theme are managed as raw dotfiles, not via programs.* (see dotfiles/core.nix).
 
   # gh: programs.gh owns ~/.config/gh/config.yml and installs gh-dash as a real
   # extension so `gh dash` (alias ghd) works — gh won't run gh-* PATH binaries.
