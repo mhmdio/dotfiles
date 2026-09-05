@@ -39,7 +39,7 @@ flowchart BT
     CLI tools · runtimes · zsh · dotfiles
     home/`"]
     DEV["`**devenv.sh** — per client
-    kubectl · terraform · awscli …
+    kubectl · terraform · helm …
     via direnv, in each client repo`"]
 
     HW  -->|"installs"| NIX
@@ -126,7 +126,7 @@ built for `x86_64` and `aarch64`, so a Hetzner box works whichever it is.
 - **Theme follows the OS** — Catppuccin Mocha (dark) / Latte (light); no switcher, no rebuild.
 - **One-line tool changes** — add or remove a name in a single file, then `make apply`.
 - **Forkable** — the account is auto-detected; just swap the cask list and it's yours.
-- **Client tools stay out** — kubectl/terraform/awscli live per-client in [devenv.sh](https://devenv.sh), never here.
+- **Client tools stay out** — kubectl, terraform and friends live per-client in [devenv.sh](https://devenv.sh), never here. (`awscli2` is the one deliberate exception: agents call `aws` directly.)
 
 </details>
 
@@ -264,16 +264,16 @@ It runs the very same activation script nix-darwin would exec, read out of the
 darwin config — not a parallel `homeConfigurations` output that could drift from it.
 New **packages, casks, macOS defaults or launchd agents still need `make apply`**.
 
-**`make update` does more than `nix flake update`.** Three pin sets move together,
-and all three land in `git diff` next to each other:
+**`make update` does more than `nix flake update`.** Two pin sets move together,
+and both land in `git diff` next to each other:
 
 | | |
 |---|---|
 | `flake.lock` | nixpkgs · nix-darwin · home-manager |
 | `home/config/nvim/lazy-lock.json` | via `nvim --headless '+Lazy! update'` |
 
-Reaching for `nix flake update` by hand silently skips the last two, and they drift
-quietly. Narrow it with `make update I=nixpkgs` — naming a single input updates
+Reaching for `nix flake update` by hand silently skips the plugin pass, and those
+pins drift quietly. Narrow it with `make update I=nixpkgs` — naming a single input updates
 *only* that input and deliberately skips the plugin pass.
 
 | Inspect | |
@@ -281,7 +281,7 @@ quietly. Narrow it with `make update I=nixpkgs` — naming a single input update
 | `make diff` | build, then `nvd` what would change vs the running system — **the pre-flight for `apply`** |
 | `make build` | build without activating (leaves `./result`) |
 | `make generations` | list past generations |
-| `make check` | `nix flake check` — statix lint + a real build of every config |
+| `make check` | `nix flake check` — lint, fmt, and a real build of this host's config (the Linux ones are skipped as incompatible systems) |
 | `make lint` · `make fmt` | fast statix check, no build · format every `.nix` (nixfmt) |
 
 | Recover / reclaim | |
@@ -443,8 +443,9 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 | [pnpm](https://pnpm.io/) | fast JS package manager *(desktop)* |
 | [tree-sitter](https://github.com/tree-sitter/tree-sitter) | incremental parser |
 | [devenv](https://github.com/cachix/devenv) | per-project dev shells (devenv.sh) *(desktop)* |
+| [uv](https://docs.astral.sh/uv/) | Python installer/runner; `uvx` for one-off tools *(desktop)* |
 
-**editor / multiplexer**
+**editor**
 
 | tool | what it is |
 |---|---|
@@ -514,7 +515,23 @@ plain `git worktree add`.
 | [hackernews-tui](https://github.com/aome510/hackernews-TUI) | Hacker News reader (`hn`) *(desktop)* |
 | [bagels](https://github.com/EnhancedJax/Bagels) | expense tracker TUI (`bagels`) *(desktop)* |
 | [harlequin](https://harlequin.sh/) | SQL IDE for the terminal (`harlequin`) *(desktop)* |
+
+**cloud**
+
+| tool | what it is |
+|---|---|
+| [awscli2](https://aws.amazon.com/cli/) | `aws` CLI — called directly by agents *(desktop)* |
 | [cloudlens](https://github.com/one2nc/cloudlens) | k9s-like TUI for AWS/GCP (`cloudlens`) *(desktop)* |
+
+**secrets**
+
+Credentials themselves live in 1Password (`op`); these are for secrets committed
+to a repo encrypted.
+
+| tool | what it is |
+|---|---|
+| [age](https://github.com/FiloSottile/age) | modern file encryption |
+| [sops](https://github.com/getsops/sops) | encrypted files with age keys |
 
 **recording / media**
 
