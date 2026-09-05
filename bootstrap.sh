@@ -13,7 +13,11 @@
 set -euo pipefail
 
 REPO_URL="${DOTFILES_REPO_URL:-https://github.com/mhmdio/dotfiles}"
-REPO_DIR="${DOTFILES_DIR:-$HOME/dotfiles}"
+# Must match `repo` in home/dotfiles/workstation.nix — that module points
+# ~/.config/nvim/lazy-lock.json at a file INSIDE this checkout, so a mismatch
+# leaves nvim with a dangling lockfile symlink it cannot read or update. The
+# check after the clone catches drift if only one of the two ever moves.
+REPO_DIR="${DOTFILES_DIR:-$HOME/Developer/dotfiles}"
 DOTFILES_USER="${DOTFILES_USER:-${USER:-$(id -un)}}"
 # Bootstrap DRIVER frontends that run the first switch — pinned to a stable release
 # for a dependable first run. The flake's own inputs (nixpkgs/nix-darwin/home-manager
@@ -128,6 +132,16 @@ else
   git -C "$REPO_DIR" reset --hard --quiet origin/main
   ok "refreshed $REPO_DIR to origin"
 fi
+# Both sides name the checkout independently (this script has to know it before
+# there is a repo to read it from), so verify they agree rather than silently
+# shipping a broken lockfile symlink.
+expected="$(sed -n 's|.*repo = .*homeDirectory}/\(.*\)";|\1|p' \
+  "$REPO_DIR/home/dotfiles/workstation.nix" 2>/dev/null || true)"
+if [ -n "$expected" ] && [ "$REPO_DIR" != "$HOME/$expected" ]; then
+  warn "checkout is $REPO_DIR but home/dotfiles/workstation.nix expects \$HOME/$expected"
+  warn "nvim's lazy-lock.json symlink will dangle — make the two match"
+fi
+
 cd "$REPO_DIR"
 
 # Stamp the account to build for; the flake reads ./username.nix (pure eval).

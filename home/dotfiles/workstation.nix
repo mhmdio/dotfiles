@@ -4,7 +4,10 @@
 { config, lib, ... }:
 let
   # Where this repo is checked out. Only needed for the writable symlink below —
-  # everything else flows through the store. Change it if you clone elsewhere.
+  # everything else flows through the store. Clone elsewhere and this has to
+  # move with it, along with REPO_DIR in bootstrap.sh, which greps the line
+  # below to warn when the two disagree — so keep the `repo = "${…}/path";`
+  # shape.
   repo = "${config.home.homeDirectory}/Developer/dotfiles";
 in
 {
