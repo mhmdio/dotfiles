@@ -356,7 +356,10 @@ Homebrew casks** (declared in `hosts/mac.nix`) — `nh`/Nix manage the
 CLI/Nix side, not casks.
 
 `,` ([comma](https://github.com/nix-community/comma)) complements it: `, cowsay hi`
-runs any nixpkg without installing it (run `nix-index` once to build its index).
+runs any nixpkg without installing it. The lookup database is not built locally —
+[nix-index-database](https://github.com/nix-community/nix-index-database) is a
+flake input pinned in `flake.lock`, so `,` works on a fresh machine with nothing
+to run by hand, and `make update` refreshes the index along with everything else.
 
 ### Adding / removing a tool
 

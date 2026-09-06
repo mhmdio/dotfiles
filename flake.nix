@@ -20,6 +20,14 @@
       url = "github:catppuccin/nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Prebuilt, upstream-refreshed nix-index database. Without it `,` needs a
+    # local `nix-index` run (~10 min) that then silently goes stale — and until
+    # someone remembers to do it, `, <cmd>` just fails.
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =

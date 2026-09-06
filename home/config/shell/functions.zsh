@@ -76,4 +76,11 @@ lip() {
   (( found )) || echo "No active forwards"
 }
 
+# Unknown command → suggest the one-off runner rather than installing anything.
+# `,` resolves the package from the same nix-index database (see home/shared.nix).
+command_not_found_handler() {
+  print -ru2 -- "$1: not installed — run it once with:  , $*"
+  return 127
+}
+
 # AI coding tools — `cc`/`oc`/`cx` and `ai-update` — live in ~/.config/shell/ai.zsh

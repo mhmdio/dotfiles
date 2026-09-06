@@ -42,8 +42,8 @@
       nix-output-monitor # nom: live build progress for `nix run .#mac` / `.#linux`
       nh # nicer rebuild/GC front-end (nom output + generation diff)
       nvd # generation diff — apply.sh shows what changed after a switch
-      comma
-      nix-index # `, <cmd>` runs any nixpkg uninstalled (run `nix-index` once)
+      # comma + nix-index come from the nix-index-database module (shared.nix),
+      # which wraps both around a prebuilt database — no local index to build.
 
       # build toolchain (language runtimes are workstation-only — see workstation.nix)
       gcc

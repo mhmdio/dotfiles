@@ -14,7 +14,19 @@
   imports = [
     ./packages/core.nix
     ./dotfiles/core.nix
+    inputs.nix-index-database.homeModules.nix-index
   ];
+
+  # `,` and nix-index, both reading the prebuilt database the flake input ships.
+  # The module defaults programs.nix-index.enable to true and symlinks the
+  # database to $XDG_CACHE_HOME/nix-index/files, which is the file comma looks
+  # for — so this works on a fresh machine with nothing to run by hand.
+  programs.nix-index-database.comma.enable = true;
+
+  # The upstream zsh hook advises `nix-env -iA`, which would build an imperative
+  # profile fighting this one — and its heredocs render through the cat->bat
+  # alias. functions.zsh has a two-line replacement pointing at `,`.
+  programs.nix-index.enableZshIntegration = false;
 
   # Pin `nixpkgs` to this flake's locked input, so `nix run nixpkgs#…` and comma
   # use the same version the system was built from.
