@@ -1,0 +1,10 @@
+# Who may decrypt this repo's secrets. age recipients are public by design; the
+# matching private key lives at ~/.config/sops/age/keys.txt and is never committed.
+keys:
+  - &mac age1nkw78nux49yc5dz2q60xpuhpp5zwta9h3dqxe43jcmrhm7wypy0qwuap63
+
+creation_rules:
+  - path_regex: secrets/[^/]+\.(ya?ml|json|env|ini)$
+    key_groups:
+      - age:
+          - *mac

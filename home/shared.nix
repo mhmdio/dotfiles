@@ -15,6 +15,7 @@
     ./packages/core.nix
     ./dotfiles/core.nix
     inputs.nix-index-database.homeModules.nix-index
+    inputs.sops-nix.homeManagerModules.sops
   ];
 
   # `,` and nix-index, both reading the prebuilt database the flake input ships.
@@ -27,6 +28,18 @@
   # profile fighting this one — and its heredocs render through the cat->bat
   # alias. functions.zsh has a two-line replacement pointing at `,`.
   programs.nix-index.enableZshIntegration = false;
+
+  # sops-nix. The module's whole config block is `mkIf (secrets != {})`, so
+  # importing it costs nothing until a secret is declared — no activation step,
+  # no launchd agent, no key required. Point it at the standard key location now
+  # so adding the first secret is a one-liner:
+  #
+  #   sops.defaultSopsFile = ../secrets/secrets.yaml;
+  #   sops.secrets.some-token = { };
+  #
+  # The private key is NOT in this repo and must never be: see .sops.yaml for
+  # the public recipient, and back the key up out of band.
+  sops.age.keyFile = "${config.xdg.configHome}/sops/age/keys.txt";
 
   # Pin `nixpkgs` to this flake's locked input, so `nix run nixpkgs#…` and comma
   # use the same version the system was built from.

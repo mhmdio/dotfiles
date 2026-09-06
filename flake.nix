@@ -28,6 +28,14 @@
       url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # sops-nix: age-encrypted secrets committed to this repo, decrypted into
+    # place at activation. 1Password (`op`) still owns live credentials; this is
+    # for the things a config needs to carry itself.
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =

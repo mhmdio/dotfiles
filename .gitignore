@@ -7,3 +7,8 @@ result-*
 
 # direnv
 .direnv/
+
+# secrets: encrypted files under secrets/ are meant to be committed — these never are
+keys.txt
+*.agekey
+secrets/*.dec.*

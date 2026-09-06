@@ -535,6 +535,20 @@ to a repo encrypted.
 |---|---|
 | [age](https://github.com/FiloSottile/age) | modern file encryption |
 | [sops](https://github.com/getsops/sops) | encrypted files with age keys |
+| [sops-nix](https://github.com/Mic92/sops-nix) | decrypts them into place at activation |
+
+`.sops.yaml` names the age recipients allowed to decrypt; the private key sits at
+`~/.config/sops/age/keys.txt`, is gitignored, and **is not reproducible from this
+repo** — back it up, or a fresh machine can restore every config except these.
+
+Nothing is encrypted yet, and the module is inert until something is: its config
+is `mkIf (secrets != {})`, so importing it adds no activation step. Adding the
+first secret is two lines in `home/shared.nix` —
+
+```nix
+sops.defaultSopsFile = ../secrets/secrets.yaml;   # created by: sops secrets/secrets.yaml
+sops.secrets.some-token = { };                    # → ~/.config/sops-nix/secrets/some-token
+```
 
 **recording / media**
 
