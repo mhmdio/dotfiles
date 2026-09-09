@@ -203,8 +203,11 @@ dotfiles/
 <details>
 <summary><h2>Bootstrap</h2></summary>
 
-One command on a fresh machine. Idempotent — every layer is skipped if already
-present, so it is safe to re-run.
+One command on a fresh machine. Re-runs skip installed prerequisites, refresh
+the checkout, and apply it again. Refresh refuses tracked edits, untracked files,
+or local commits; only the auto-stamped root `username.nix` is exempt. Commit/push
+local work or use `git stash -u` before re-running. `DOTFILES_FORCE_RESET=1`
+explicitly bypasses this protection and can discard local work.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh | bash
@@ -213,8 +216,9 @@ curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh |
 - **macOS** → Xcode CLT → Lix → Homebrew → clone → `darwin-rebuild switch`
 - **Linux** (non-NixOS) → Lix → clone → `home-manager switch` (no system layer; the switch needs no sudo, though installing Lix + enrolling a trusted user does)
 - **Headless** → *not* this script. Once Lix and the clone exist, the no-desktop
-  profile is `nix run .#server` — normally driven by the homelab repo's Ansible
-  dotfiles role, not by hand. (Running `bootstrap.sh` on a server would apply the
+  profile is `nix run .#server` — it supplies the pinned Home Manager CLI, so no
+  separate CLI installation is needed. Normally driven by the homelab repo's
+  Ansible dotfiles role, not by hand. (Running `bootstrap.sh` on a server would apply the
   *desktop* Linux profile, which is exactly the weight `server.nix` exists to avoid.)
 
 </details>
@@ -281,8 +285,15 @@ pins drift quietly. Narrow it with `make update I=nixpkgs` — naming a single i
 | `make diff` | build, then `nvd` what would change vs the running system — **the pre-flight for `apply`** |
 | `make build` | build without activating (leaves `./result`) |
 | `make generations` | list past generations |
-| `make check` | `nix flake check` — lint, fmt, and a real build of this host's config (the Linux ones are skipped as incompatible systems) |
+| `make check` | `nix flake check` — lint, fmt, workflow tests, and this host's declared config builds |
 | `make lint` · `make fmt` | fast statix check, no build · format every `.nix` (nixfmt) |
+| `make test` | isolated bootstrap/apply/shell regressions, including first-run CLI wiring; no system activation |
+
+The workflow suite lives in `tests/test_workflows.py` and runs in CI too. It uses
+throwaway homes and Git repositories, the real packaged Home Manager drivers,
+and fake Nix build commands—no network access or real profile activation. For
+script-only checks without Nix, run `python3 tests/test_workflows.py` with Git,
+Bash and Zsh installed (the packaged-app test is skipped).
 
 | Recover / reclaim | |
 |---|---|
@@ -317,7 +328,10 @@ nix run .#demo     # re-record the showcase gif (vhs · macOS only)
 nix build --dry-run .#darwinConfigurations.mac.system   # evaluate, don't apply
 ```
 
-`apply.sh` stages tracked files for you (flakes only see them), shows the live build
+`apply.sh` stages changes, including new files, in ordinary clones and linked Git
+worktrees (flakes only see tracked files). A staging failure stops the apply.
+The Linux desktop and server apps both carry the flake-pinned Home Manager CLI.
+The wrapper shows the live build
 tree via [nix-output-monitor](https://github.com/maralorn/nix-output-monitor), keeps
 the build log on screen so a failed switch stays debuggable, and on macOS prints an
 `nvd` diff of what changed afterwards.

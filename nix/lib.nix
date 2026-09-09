@@ -10,8 +10,29 @@ let
   # one entry here instead of a change to mkDarwin and mkHome. (Last occupant: a
   # sqlfmt pname workaround, dropped once nixpkgs fixed it upstream.)
   overlays = [ ];
+
+  # Both standalone entry points carry the pinned driver, even before the first
+  # generation installs home-manager. Leave Nix itself to the host's Lix install.
+  mkHomeApp =
+    {
+      system,
+      platform,
+      src,
+    }:
+    let
+      pkgs = nixpkgs.legacyPackages.${system};
+    in
+    {
+      type = "app";
+      program = "${pkgs.writeShellScript platform ''
+        export PATH="${home-manager.packages.${system}.home-manager}/bin:$PATH"
+        exec ${pkgs.bash}/bin/bash ${src + "/apply.sh"} ${platform}
+      ''}";
+    };
 in
 {
+  inherit mkHomeApp;
+
   # macOS: full system (nix-darwin) + that user's home-manager.
   mkDarwin =
     {
@@ -86,9 +107,36 @@ in
         touch "$out"
       '';
 
-  # `nix flake check`: every .nix file is nixfmt-clean. Cheap (no system build), so
-  # together with lint it's the whole of what CI runs — the .darwin/.home build
-  # checks stay local-only.
+  # Exercise the real scripts with disposable Git repos and fake rebuilds.
+  # Build the same home-app wrappers natively so macOS can test first-run CLI
+  # wiring too, without needing a Linux builder or activating a real profile.
+  workflowsFor =
+    { system, src }:
+    let
+      pkgs = nixpkgs.legacyPackages.${system};
+      app = platform: mkHomeApp { inherit system src platform; };
+    in
+    pkgs.runCommandLocal "dotfiles-workflows"
+      {
+        nativeBuildInputs = with pkgs; [
+          bash
+          coreutils
+          git
+          gnugrep
+          gnused
+          python3
+          zsh
+        ];
+        DOTFILES_TEST_LINUX_APP = (app "linux").program;
+        DOTFILES_TEST_SERVER_APP = (app "server").program;
+      }
+      ''
+        python3 ${src}/tests/test_workflows.py
+        touch "$out"
+      '';
+
+  # `nix flake check`: every .nix file is nixfmt-clean. The full system builds
+  # stay local-only; CI runs this along with lint and the workflow regressions.
   fmtCheckFor =
     { system, src }:
     let

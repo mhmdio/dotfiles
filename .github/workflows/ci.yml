@@ -1,6 +1,6 @@
 name: ci
 
-# Lint + format + eval — fast, no system build. Eval instantiates every config
+# Lint + format + workflows + eval — no system build. Eval instantiates every config
 # through the module system, so a renamed package or invalid option fails here.
 # The full mac/linux config builds (checks.*.darwin / .home) are deliberately
 # left to local `make check`; building a whole nix-darwin system in CI is
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   check:
-    name: lint · fmt
+    name: lint · fmt · workflows · eval
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -27,6 +27,8 @@ jobs:
         run: nix build -L --no-link .#checks.x86_64-linux.lint
       - name: fmt   ·  nixfmt --check
         run: nix build -L --no-link .#checks.x86_64-linux.fmt
+      - name: workflows  ·  bootstrap + apply + shell regressions
+        run: nix build -L --no-link .#checks.x86_64-linux.workflows
       - name: eval  ·  darwin + home + server configs
         run: |
           user="$(nix eval --raw --file username.nix)"

@@ -18,7 +18,10 @@ zd() {
   elif [[ -d $1 ]]; then
     builtin cd "$1"
   else
-    z "$@" && printf "%s " "->" && pwd || echo "Error: Directory not found"
+    # Preserve cd's failure contract: `cd missing && command` must not run it
+    # in the original directory just because printing an error succeeded.
+    z "$@" || { print -ru2 -- "Error: Directory not found"; return 1; }
+    printf "%s " "->" && pwd
   fi
 }
 alias ..='cd ..'

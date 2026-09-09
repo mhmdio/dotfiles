@@ -110,23 +110,25 @@ fi
 
 # --- Clone, or refresh an existing clone to the published state -------------
 step "Repo"
-if [ ! -d "$REPO_DIR/.git" ]; then
+# .git is a file in linked worktrees. Require it here so Git cannot discover
+# an unrelated parent repository and reset that instead.
+if [ ! -e "$REPO_DIR/.git" ]; then
   info "cloning $REPO_URL"
   git clone --quiet "$REPO_URL" "$REPO_DIR"
   ok "cloned → $REPO_DIR"
 else
   # Reset (not pull): single force-pushed commit means histories diverge. Guard
-  # first — bail rather than discard local work (tracked edits beyond the auto-
-  # stamped username.nix, or local commits ahead of origin). Override: set
-  # DOTFILES_FORCE_RESET=1.
+  # first — bail rather than discard local work (including untracked files,
+  # which reset --hard can overwrite when upstream adds the same path). Only
+  # the exact auto-stamped username.nix is exempt. Override: DOTFILES_FORCE_RESET=1.
   git -C "$REPO_DIR" fetch --quiet origin
-  dirty="$(git -C "$REPO_DIR" status --porcelain --untracked-files=no | grep -v 'username\.nix' || true)"
-  ahead="$(git -C "$REPO_DIR" rev-list --count origin/main..HEAD 2>/dev/null || echo 0)"
-  if [ -z "${DOTFILES_FORCE_RESET:-}" ] && { [ -n "$dirty" ] || [ "$ahead" != 0 ]; }; then
-    warn "local work in $REPO_DIR would be lost by 'git reset --hard origin/main':"
+  dirty="$(git -C "$REPO_DIR" status --porcelain --untracked-files=all -- . ':(top,exclude)username.nix')"
+  ahead="$(git -C "$REPO_DIR" rev-list --count origin/main..HEAD)"
+  if [ "${DOTFILES_FORCE_RESET:-}" != 1 ] && { [ -n "$dirty" ] || [ "$ahead" != 0 ]; }; then
+    warn "local work in $REPO_DIR may be lost by 'git reset --hard origin/main':"
     [ -n "$dirty" ] && printf '%s\n' "$dirty" >&2
     [ "$ahead" != 0 ] && warn "  ($ahead local commit(s) ahead of origin)"
-    warn "commit/stash/push them, or re-run with DOTFILES_FORCE_RESET=1 to override."
+    warn "commit/push your work or stash it with 'git stash -u'; use DOTFILES_FORCE_RESET=1 to discard it."
     exit 1
   fi
   git -C "$REPO_DIR" reset --hard --quiet origin/main

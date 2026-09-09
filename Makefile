@@ -19,7 +19,7 @@ endif
 
 .DEFAULT_GOAL := help
 .PHONY: help apply switch home mac linux build diff generations \
-        check fmt lint update rollback gc cleanup clean bootstrap demo
+        check test fmt lint update rollback gc cleanup clean bootstrap demo
 
 help: ## List every target
 	@printf '\n  \033[1mdotfiles\033[0m — make targets (host: $(HOST))\n\n'
@@ -80,8 +80,12 @@ else
 endif
 
 # ── maintain ────────────────────────────────────────────────────────────────
-check: ## nix flake check — statix lint + a real build of every config
+check: ## nix flake check — lint, fmt, workflows + this host's config build
 	nix flake check
+
+test: ## Isolated bootstrap/apply/shell regressions — no system activation
+	@system=$$(nix eval --raw --impure --expr builtins.currentSystem) && \
+	  nix build -L --no-link ".#checks.$$system.workflows"
 
 fmt: ## Format every *.nix with nixfmt (nix fmt)
 	nix fmt

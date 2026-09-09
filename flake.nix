@@ -93,8 +93,8 @@
       };
     in
     {
-      # `nix flake check`: lint + fmt + a real build of each config. CI runs the
-      # cheap lint/fmt checks plus an eval of every config (see
+      # `nix flake check`: lint + fmt + workflows + a real build of each config.
+      # CI runs the cheap checks plus an eval of every config (see
       # .github/workflows/ci.yml); the system builds (.darwin / .home) stay
       # local — `make check`.
       checks.${darwinSystem} = {
@@ -103,6 +103,10 @@
           src = ./.;
         };
         fmt = lib.fmtCheckFor {
+          system = darwinSystem;
+          src = ./.;
+        };
+        workflows = lib.workflowsFor {
           system = darwinSystem;
           src = ./.;
         };
@@ -117,8 +121,17 @@
           system = linuxSystem;
           src = ./.;
         };
+        workflows = lib.workflowsFor {
+          system = linuxSystem;
+          src = ./.;
+        };
         home = homeMain.activationPackage;
         server = serverMain.activationPackage;
+      };
+
+      checks.aarch64-linux.workflows = lib.workflowsFor {
+        system = "aarch64-linux";
+        src = ./.;
       };
 
       # `nix fmt` — nixfmt across all .nix files.
@@ -149,19 +162,13 @@
         # config by `uname -m`).
         // nixpkgs.lib.genAttrs [ linuxSystem "aarch64-linux" ] (
           system:
-          let
-            pkgs = nixpkgs.legacyPackages.${system};
-          in
-          {
-            linux = {
-              type = "app";
-              program = "${pkgs.writeShellScript "linux" "exec ${pkgs.bash}/bin/bash ${./apply.sh} linux"}";
-            };
-            server = {
-              type = "app";
-              program = "${pkgs.writeShellScript "server" "exec ${pkgs.bash}/bin/bash ${./apply.sh} server"}";
-            };
-          }
+          nixpkgs.lib.genAttrs [ "linux" "server" ] (
+            platform:
+            lib.mkHomeApp {
+              inherit system platform;
+              src = ./.;
+            }
+          )
         );
 
       # macOS host (apply: nix run .#mac). Add darwin boxes by repeating mkDarwin

@@ -58,9 +58,10 @@ run_with_progress() {
 banner
 
 # Flakes only see git-tracked files; stage so edits aren't silently skipped.
-if [ -d .git ]; then
+# Ask Git rather than testing .git's type: linked worktrees use a .git file.
+if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = true ]; then
   info "staging all changes (incl. new files) for the flake…"
-  git add -A 2>/dev/null || true
+  git add -A || die "could not stage changes — refusing to apply an incomplete flake" "$?"
 fi
 
 case "$PLATFORM" in
