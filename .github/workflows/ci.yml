@@ -2,9 +2,8 @@ name: ci
 
 # Lint + format + workflows + eval — no system build. Eval instantiates every config
 # through the module system, so a renamed package or invalid option fails here.
-# The full mac/linux config builds (checks.*.darwin / .home) are deliberately
-# left to local `make check`; building a whole nix-darwin system in CI is
-# overkill for now.
+# The full home builds (checks.*.home / .server) are left to local
+# `make check`. The Mac isn't Nix-managed (Homebrew), so there is nothing to eval.
 on:
   push:
     branches: [main]
@@ -29,10 +28,9 @@ jobs:
         run: nix build -L --no-link .#checks.x86_64-linux.fmt
       - name: workflows  ·  bootstrap + apply + shell regressions
         run: nix build -L --no-link .#checks.x86_64-linux.workflows
-      - name: eval  ·  darwin + home + server configs
+      - name: eval  ·  home + server configs
         run: |
           user="$(nix eval --raw --file username.nix)"
-          nix eval --raw .#darwinConfigurations.mac.system.drvPath
           nix eval --raw .#homeConfigurations."$user".activationPackage.drvPath
           nix eval --raw .#homeConfigurations."$user-aarch64".activationPackage.drvPath
           # Headless profile (home/server.nix) — the account is the flake's

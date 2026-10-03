@@ -39,7 +39,7 @@ dir_editor = "nvim"
 # `Q` quits with the cd even when this is false.
 cd_on_quit = true
 
-#-- Don't phone home on exit; the binary is Homebrew-managed (hosts/mac.nix),
+#-- Don't phone home on exit; the binary is Homebrew-managed (Brewfile),
 # so `brew upgrade superfile` — or `b up` — owns updates, not superfile itself.
 auto_check_update = false
 
@@ -64,11 +64,11 @@ transparent_background = true
 
 #-- Code previewer
 # bat, not the builtin chroma highlighter: bat already selects its Catppuccin
-# flavour from the terminal background (see home/dotfiles/core.nix), so file
+# flavour from the terminal background (see config/bat/config), so file
 # previews follow light/dark for free too.
 code_previewer = "bat"
 
-#-- Nerd Font icons (fonts come from hosts/mac.nix)
+#-- Nerd Font icons (fonts come from the Brewfile)
 nerdfont = true
 
 ###############################################################################

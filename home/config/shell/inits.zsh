@@ -7,58 +7,43 @@ _zcache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 [[ -d $_zcache ]] || mkdir -p "$_zcache"
 
 # ── PATH & fpath ─────────────────────────────────────────────────────────────
-# Static equivalent of `eval "$(brew shellenv)"`, which cost ~31ms and forked
-# path_helper a second time on top. /opt/homebrew/etc/paths contains exactly
-# bin + sbin, so this prepend is what path_helper produced — verified, not
-# assumed. The fpath line is the reason this block moved above compinit: it used
-# to run after, so brew's completions could never reach the dump.
-if [[ -x /opt/homebrew/bin/brew ]]; then
-  export HOMEBREW_PREFIX=/opt/homebrew
-  export HOMEBREW_CELLAR=/opt/homebrew/Cellar
-  export HOMEBREW_REPOSITORY=/opt/homebrew
-  export INFOPATH="/opt/homebrew/share/info${INFOPATH:+:$INFOPATH}"
-  fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
-  path=(/opt/homebrew/bin /opt/homebrew/sbin $path)
-fi
-
-# Precedence, decided here so it lives in one place: ~/.opencode/bin (its own
-# installer, see envs.zsh) beats nix, and nix beats brew. envs.zsh sets the
-# opencode entry for non-interactive shells too; re-asserting it here is what
-# survives brew's prepend above. typeset -U keeps the first copy of each.
-path=("$HOME/.opencode/bin" /etc/profiles/per-user/"$USER"/bin /run/current-system/sw/bin $path)
-typeset -U path fpath
+# Must run before compinit: the dump is built from fpath, so brew's
+# site-functions added any later would never reach it.
+source "$HOME/.config/shell/path.zsh"
 
 # ── Completion ───────────────────────────────────────────────────────────────
-# The only compinit that runs: the system-wide one is off (programs.zsh
-# .enableGlobalCompInit, hosts/mac.nix), so this replaces a full ~545ms scan.
-# The dump is keyed to the nix profile's store path, which is the one thing that
-# changes when fpath changes — so a switch rebuilds it exactly once and every
-# later shell takes the cheap -C path. A plain `-C` against a fixed filename is
-# what silently froze completions for three months: new tools were never picked
-# up because -C never rescans.
+# The only compinit that runs (macOS's /etc/zshrc runs none; home-manager's
+# global one is off), and it takes the cheap -C path whenever it can. -C never
+# rescans, so the dump is keyed to whatever changes when fpath's contents do —
+# a plain `-C` against a fixed filename is what once silently froze completions
+# for three months.
 #
-# The profile sits in a different place per platform: nix-darwin + home-manager
-# use /etc/profiles/per-user, standalone home-manager on Linux uses
-# ~/.nix-profile. Probe rather than assume — a path that does not exist comes
-# back from `:A` unresolved, which would key the dump on the bare username and
-# so never change it again.
-_zprof=
-for _p in /etc/profiles/per-user/$USER "$HOME/.local/state/nix/profiles/home-manager" "$HOME/.nix-profile"; do
-  [[ -e $_p ]] && { _zprof=${_p:A}; break; }
+#   Linux (home-manager): the nix profile's store path — a new generation means
+#     a new key. Probe rather than assume: a path that does not exist comes back
+#     from `:A` unresolved, keying the dump on the bare username forever.
+#   macOS (Homebrew): the mtime of brew's site-functions directory, which moves
+#     whenever a formula's completion is linked or unlinked.
+_zkey=
+for _p in "$HOME/.local/state/nix/profiles/home-manager" "$HOME/.nix-profile"; do
+  [[ -e $_p ]] && { _zkey=${${_p:A}:t}; break; }
 done
+if [[ -z $_zkey && -d ${HOMEBREW_PREFIX:-/nonexistent}/share/zsh/site-functions ]]; then
+  zmodload -F zsh/stat b:zstat 2>/dev/null &&
+    zstat -A _zm +mtime -- "$HOMEBREW_PREFIX/share/zsh/site-functions" &&
+    _zkey="brew-${_zm[1]}"
+fi
 
 autoload -Uz compinit
-if [[ -n ${_zprof:t} ]]; then
-  _zdump="$_zcache/zcompdump-${_zprof:t}"
-  [[ -s $_zdump ]] || command rm -f "$_zcache"/zcompdump-*(N)  # prune older generations
+if [[ -n $_zkey ]]; then
+  _zdump="$_zcache/zcompdump-$_zkey"
+  [[ -s $_zdump ]] || command rm -f "$_zcache"/zcompdump-*(N)  # prune stale keys
   compinit -C -d "$_zdump"
 else
-  # No nix profile to key on (this file is normally deployed by one). Nothing
-  # reliable to invalidate against, so pay for a real scan rather than serve a
-  # dump that can never go stale in a way we would notice.
+  # Nothing reliable to invalidate against, so pay for a real scan rather than
+  # serve a dump that can never go stale in a way we would notice.
   compinit -d "$_zcache/zcompdump"
 fi
-unset _zprof _zdump _p
+unset _zkey _zdump _zm _p
 
 # ── Cached tool inits ────────────────────────────────────────────────────────
 # `<tool> init zsh` output is static (verified identical across runs) but each
@@ -91,12 +76,14 @@ if [[ -t 0 && -t 1 ]]; then
 fi
 
 # Plugins: autosuggestions then syntax-highlighting (must be last). Paths come
-# from $_NIX_ZSH_* (shared.nix); guarded so re-sourcing won't re-wrap widgets.
+# from $_NIX_ZSH_* on Linux (shared.nix), else Homebrew; guarded so re-sourcing
+# won't re-wrap widgets.
 if [[ -t 0 && -t 1 ]]; then
-  (( ${+functions[_zsh_autosuggest_start]} )) || \
-    source "$_NIX_ZSH_AUTOSUGGESTIONS"
-  [[ -n "${ZSH_HIGHLIGHT_VERSION:-}" ]] || \
-    source "$_NIX_ZSH_SYNTAX_HIGHLIGHTING"
+  _zas="${_NIX_ZSH_AUTOSUGGESTIONS:-${HOMEBREW_PREFIX:-}/share/zsh-autosuggestions/zsh-autosuggestions.zsh}"
+  _zsh_hl="${_NIX_ZSH_SYNTAX_HIGHLIGHTING:-${HOMEBREW_PREFIX:-}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh}"
+  (( ${+functions[_zsh_autosuggest_start]} )) || { [[ -r $_zas ]] && source "$_zas"; }
+  [[ -n "${ZSH_HIGHLIGHT_VERSION:-}" ]] || { [[ -r $_zsh_hl ]] && source "$_zsh_hl"; }
+  unset _zas _zsh_hl
 fi
 
 unset -f _zsh_cached_init; unset _zcache  # keep the interactive namespace clean

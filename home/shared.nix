@@ -1,5 +1,5 @@
 # Portable user core (home-manager) — the floor every profile stands on:
-# workstation.nix (Mac + Linux desktop) and server.nix (headless) both import it.
+# workstation.nix (Linux desktop) and server.nix (headless) both import it.
 # Keep it GUI-free; desktop-only additions belong in the workstation layer.
 # `username` comes from flake.nix so the repo is fork-and-go.
 {
@@ -31,7 +31,7 @@
 
   # sops-nix. The module's whole config block is `mkIf (secrets != {})`, so
   # importing it costs nothing until a secret is declared — no activation step,
-  # no launchd agent, no key required. Point it at the standard key location now
+  # no systemd unit, no key required. Point it at the standard key location now
   # so adding the first secret is a one-liner:
   #
   #   sops.defaultSopsFile = ../secrets/secrets.yaml;
@@ -45,17 +45,9 @@
   # use the same version the system was built from.
   nix.registry.nixpkgs.flake = inputs.nixpkgs;
 
-  # nix-darwin supplies these on macOS (mkDefault yields); Linux derives them.
   # root's home is /root, not /home/root, so a headless server run as root works.
   home.username = lib.mkDefault username;
-  home.homeDirectory = lib.mkDefault (
-    if pkgs.stdenv.hostPlatform.isDarwin then
-      "/Users/${username}"
-    else if username == "root" then
-      "/root"
-    else
-      "/home/${username}"
-  );
+  home.homeDirectory = lib.mkDefault (if username == "root" then "/root" else "/home/${username}");
   home.stateVersion = "25.11";
 
   # git/theme are managed as raw dotfiles, not via programs.* (see dotfiles/core.nix).
@@ -76,14 +68,15 @@
     };
   };
 
-  # direnv: entry point for per-client devshells (devenv.sh).
+  # direnv: loads a client's env on cd (source_env ~/Developer/devenv/<client>/envrc);
+  # nix-direnv caches `use flake` shells.
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
   };
 
   # Quiet direnv's per-load "loading…" / "export +VAR…" status lines. Empty format
-  # disables direnv's own logging; the devenv enterShell banner still prints.
+  # disables direnv's own logging; a client envrc's banner still prints.
   home.sessionVariables.DIRENV_LOG_FORMAT = "";
 
   # home-manager owns .zshrc/.zshenv; we export plugin store paths and source the

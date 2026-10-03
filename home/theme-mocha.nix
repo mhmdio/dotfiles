@@ -18,9 +18,8 @@
   };
 
   # High-visibility CLIs, configured as program modules so catppuccin can theme
-  # them. On macOS these same two come as raw packages + raw configs instead
-  # (packages/core.nix and dotfiles/core.nix, both Darwin-gated) — that gate is
-  # what keeps the two mechanisms from colliding.
+  # them. (The Mac gets the same two from the Brewfile, with the raw configs in
+  # config/bat and config/btop linked by install.sh.)
   programs.bat.enable = true;
   programs.btop.enable = true;
 }

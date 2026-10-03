@@ -1,14 +1,10 @@
 {
-  description = "Bottom-up dev machine (Lix → nix-darwin → home-manager → devenv)";
+  # Linux only. The Mac runs on Homebrew (Brewfile + install.sh) — no Nix there.
+  description = "Linux home environments (Lix → home-manager); the Mac uses Homebrew";
 
   # Unstable channel: tools track upstream latest (neovim, superfile, …).
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-
-    nix-darwin = {
-      url = "github:nix-darwin/nix-darwin/master";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
 
     home-manager = {
       url = "github:nix-community/home-manager/master";
@@ -53,20 +49,13 @@
       # laptop. apply.sh greps this line, so keep the `serverUser = "…";` shape.
       serverUser = "admin";
 
-      darwinSystem = "aarch64-darwin"; # Apple Silicon
       linuxSystem = "x86_64-linux"; # non-NixOS Linux
 
-      # Host builders + lint/format helpers live in nix/lib.nix so this file is
-      # just inputs + outputs. Add a machine by repeating mkDarwin with another
-      # hostModule/user (see the WSL example at the bottom).
+      # Home builders + lint/format helpers live in nix/lib.nix so this file is
+      # just inputs + outputs. Add a machine by repeating mkHome with another
+      # user/modules.
       lib = import ./nix/lib.nix { inherit inputs; };
 
-      darwinMac = lib.mkDarwin {
-        system = darwinSystem;
-        hostModule = ./hosts/mac.nix;
-        homeModule = ./home/darwin.nix;
-        user = username;
-      };
       homeMain = lib.mkHome {
         system = linuxSystem;
         user = username;
@@ -95,23 +84,7 @@
     {
       # `nix flake check`: lint + fmt + workflows + a real build of each config.
       # CI runs the cheap checks plus an eval of every config (see
-      # .github/workflows/ci.yml); the system builds (.darwin / .home) stay
-      # local — `make check`.
-      checks.${darwinSystem} = {
-        lint = lib.lintFor {
-          system = darwinSystem;
-          src = ./.;
-        };
-        fmt = lib.fmtCheckFor {
-          system = darwinSystem;
-          src = ./.;
-        };
-        workflows = lib.workflowsFor {
-          system = darwinSystem;
-          src = ./.;
-        };
-        darwin = darwinMac.system;
-      };
+      # .github/workflows/ci.yml); the home builds stay local — `make check`.
       checks.${linuxSystem} = {
         lint = lib.lintFor {
           system = linuxSystem;
@@ -135,45 +108,22 @@
       };
 
       # `nix fmt` — nixfmt across all .nix files.
-      formatter.${darwinSystem} = lib.fmtFor darwinSystem;
       formatter.${linuxSystem} = lib.fmtFor linuxSystem;
 
-      # `nix run .#mac` / `.#linux` / `.#server` drive the apply.sh wrapper (nom
-      # progress + nvd diff) against the flake in your cwd; `.#demo` re-records
-      # the showcase gif.
-      # The Makefile wraps these (run `make`) alongside check/fmt/lint/update/gc.
-      apps =
-        let
-          darwinPkgs = nixpkgs.legacyPackages.${darwinSystem};
-        in
-        {
-          ${darwinSystem} = {
-            mac = {
-              type = "app";
-              program = "${darwinPkgs.writeShellScript "mac" "exec ${darwinPkgs.bash}/bin/bash ${./apply.sh} mac"}";
-            };
-            demo = {
-              type = "app";
-              program = "${darwinPkgs.writeShellScript "demo" "exec ${darwinPkgs.vhs}/bin/vhs .github/demo.tape"}";
-            };
-          };
-        }
-        # `nix run .#linux` on both Linux arches (apply.sh picks the matching home
-        # config by `uname -m`).
-        // nixpkgs.lib.genAttrs [ linuxSystem "aarch64-linux" ] (
-          system:
-          nixpkgs.lib.genAttrs [ "linux" "server" ] (
-            platform:
-            lib.mkHomeApp {
-              inherit system platform;
-              src = ./.;
-            }
-          )
-        );
-
-      # macOS host (apply: nix run .#mac). Add darwin boxes by repeating mkDarwin
-      # with another hostModule/user.
-      darwinConfigurations.mac = darwinMac;
+      # `nix run .#linux` / `.#server` drive the apply.sh wrapper (nom progress)
+      # against the flake in your cwd, on both Linux arches (apply.sh picks the
+      # matching home config by `uname -m`). The Makefile wraps these (run `make`)
+      # alongside check/fmt/lint/update/gc.
+      apps = nixpkgs.lib.genAttrs [ linuxSystem "aarch64-linux" ] (
+        system:
+        nixpkgs.lib.genAttrs [ "linux" "server" ] (
+          platform:
+          lib.mkHomeApp {
+            inherit system platform;
+            src = ./.;
+          }
+        )
+      );
 
       # Linux home env (apply: nix run .#linux) — same shell/tools/dotfiles, no GUI,
       # painted Catppuccin Mocha (see home/linux.nix). Both arches so a Hetzner box

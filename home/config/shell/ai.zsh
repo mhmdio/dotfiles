@@ -11,13 +11,12 @@
 # ─── Tools ───────────────────────────────────────────────────────────────────
 # Claude Code .. https://code.claude.com/docs/en/cli-reference
 #                full permission: --dangerously-skip-permissions · update: `claude update`
-# OpenCode ..... https://opencode.ai/docs/permissions
+# OpenCode ..... https://opencode.ai/v2/docs/permissions
 #                full permission: --auto (auto-approves everything not explicitly
 #                denied — opencode has no harder bypass) · update: `opencode upgrade`
 # Codex ........ https://developers.openai.com/codex/developer-commands
 #                full permission: --yolo (= --dangerously-bypass-approvals-and-sandbox)
-#                update: `brew upgrade --cask codex` — it's a cask (hosts/mac.nix), and
-#                casks are NOT upgraded on switch (homebrew.onActivation.upgrade = false)
+#                update: `brew upgrade --cask codex` — it's a cask (Brewfile)
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Run one CLI in the current directory with permissions bypassed.
@@ -26,9 +25,7 @@ alias oc='opencode --auto'
 alias cx='codex --yolo'
 
 # ── updates ──────────────────────────────────────────────────────────────────
-# Upgrade one tool via its own updater. Skips when the binary is missing, or when
-# Nix owns it: a /nix/store binary is read-only, so its self-updater can't replace
-# itself and just stalls — Nix tools upgrade with `make update && make apply`.
+# Upgrade one tool via its own updater. Skips when the binary is missing.
 #   $1 = display name   $2 = binary to check   $3.. = upgrade command
 _ai_upgrade_one() {
   local name="$1" bin="$2"; shift 2
@@ -39,11 +36,6 @@ _ai_upgrade_one() {
     gum style --faint "   ⊘ ${name} not installed — skipped"
     return
   fi
-  case "$(readlink -f "$binpath")" in
-    /nix/store/*)
-      gum style --faint "   ⊘ ${name} is Nix-managed — skip (make update && make apply)"
-      return ;;
-  esac
   if gum spin --show-error --spinner dot --title "Upgrading ${name}..." -- "$@"; then
     gum style --faint "   ✅ ${name} done"
   else
@@ -52,7 +44,7 @@ _ai_upgrade_one() {
 }
 
 ai-update() {
-  command -v gum &>/dev/null || { echo "gum is required (Nix-managed): make apply" >&2; return 1; }
+  command -v gum &>/dev/null || { echo "gum is required (brew install gum)" >&2; return 1; }
 
   gum style --border rounded --padding "0 1" --bold "🤖 AI Tools Upgrade"
 
