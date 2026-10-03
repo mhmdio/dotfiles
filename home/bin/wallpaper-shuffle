@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Picks one wallpaper from wallpaper/mac and sets it. Each file is a DYNAMIC heic
+# (two images plus an apple_desktop:apr light/dark map), so macOS still swaps
+# light/dark inside whichever one is showing. Runs at login and hourly via the
+# LaunchAgent install.sh writes; run it by hand to reroll.
+#
+# Pure bash on purpose: launchd starts it with a bare PATH, so no shuf/gshuf.
+set -euo pipefail
+
+dir="$(cd "$(dirname "$0")/../../wallpaper/mac" && pwd)"
+shopt -s nullglob
+files=("$dir"/*.heic)
+[ "${#files[@]}" -gt 0 ] || exit 0
+pick="${files[RANDOM % ${#files[@]}]}"
+
+# || true: System Events may not be approved yet — the first run raises the
+# Automation permission prompt, and a refusal must not look like a failure.
+/usr/bin/osascript -e "tell application \"System Events\" to tell every desktop to set picture to \"$pick\"" || true

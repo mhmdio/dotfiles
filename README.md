@@ -2,14 +2,13 @@
 
 # dotfiles
 
-**A declarative, reproducible dev machine — one command, macOS or Linux.**
+**One command to a set-up dev machine — Homebrew on macOS, Nix on Linux.**
 
-[![Nix flake](https://img.shields.io/badge/Nix-flake-5277C3?logo=nixos&logoColor=white)](https://nixos.org)
-[![Lix](https://img.shields.io/badge/Lix-Nix-0c7dbe?logo=nixos&logoColor=white)](https://lix.systems)
-[![nix-darwin](https://img.shields.io/badge/nix--darwin-unstable-5277C3?logo=apple&logoColor=white)](https://github.com/nix-darwin/nix-darwin)
-[![home-manager](https://img.shields.io/badge/home--manager-unstable-5277C3?logo=gnubash&logoColor=white)](https://github.com/nix-community/home-manager)
+[![Homebrew](https://img.shields.io/badge/Homebrew-macOS-FBB040?logo=homebrew&logoColor=white)](https://brew.sh)
+[![Nix flake](https://img.shields.io/badge/Nix%20flake-Linux-5277C3?logo=nixos&logoColor=white)](https://nixos.org)
+[![Lix](https://img.shields.io/badge/Lix-Linux-0c7dbe?logo=nixos&logoColor=white)](https://lix.systems)
+[![home-manager](https://img.shields.io/badge/home--manager-Linux-5277C3?logo=gnubash&logoColor=white)](https://github.com/nix-community/home-manager)
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-555?logo=linux&logoColor=white)](#bootstrap)
-[![client tools](https://img.shields.io/badge/client%20tools-devenv.sh-8839ef?logo=nixos&logoColor=white)](https://devenv.sh)
 
 </div>
 
@@ -17,57 +16,71 @@
 
 ![A short showcase of the themed terminal — fastfetch, eza tree, bat](.github/demo.gif)
 
-> Recorded with [vhs](https://github.com/charmbracelet/vhs); regenerate with `make demo`.
+> Recorded with [vhs](https://github.com/charmbracelet/vhs); regenerate with `make demo` (`brew install vhs` first).
 
 ## Architecture
 
-Each layer **depends on the layer below it**. macOS gets the full stack; Linux
-takes the same Nix → home-manager path and simply skips the macOS-only layer.
-A headless box stops one layer earlier still — see [Profiles](#profiles) below.
+Two paths up from the machine, **one set of dotfiles** at the top. The Mac runs on
+**Homebrew**: the `Brewfile` installs every CLI, runtime, font and GUI app, and
+`install.sh` symlinks `home/config/*` straight into `~/.config` — live links into
+the checkout, so there is no build step — with `macos.sh` for the system defaults.
+Linux keeps the **Lix → home-manager** path, where a pinned, rollback-able closure
+pays for itself on a box nobody sits at. Both land the same `home/config/` tree, so
+the shell, keybinds and tool configs match. A headless box takes the Linux path with
+a slimmer profile — see [Profiles](#profiles) below.
 
 ```mermaid
 flowchart BT
     HW["`**Your machine**
     macOS · Linux (non-NixOS)`"]
-    NIX["`**Lix · Nix**
+    BREW["`**Homebrew** — macOS
+    CLIs · runtimes · fonts · GUI casks
+    Brewfile`"]
+    INST["`**install.sh** — macOS
+    symlinks · zsh · launchd agent
+    + macos.sh system defaults`"]
+    NIX["`**Lix · Nix** — Linux
     interpreter + daemon + store
     flake on nixpkgs-unstable`"]
-    DAR["`**nix-darwin** — macOS only
-    system defaults · fonts · Homebrew casks
-    hosts/mac.nix`"]
-    HM["`**home-manager**
+    HM["`**home-manager** — Linux
     CLI tools · runtimes · zsh · dotfiles
-    home/`"]
-    DEV["`**devenv.sh** — per client
+    home/ — linux.nix · server.nix`"]
+    CFG["`**home/config/**
+    the dotfiles — shell · nvim · git · ghostty …
+    one tree, both platforms`"]
+    DEV["`**Per-client toolchains**
     kubectl · terraform · helm …
-    via direnv, in each client repo`"]
+    via direnv, in a private repo`"]
 
-    HW  -->|"installs"| NIX
-    NIX -->|"macOS"| DAR
-    DAR --> HM
-    NIX -.->|"Linux · standalone"| HM
-    HM  -->|"per project"| DEV
+    HW   -->|"macOS"| BREW
+    BREW --> INST
+    HW   -->|"Linux"| NIX
+    NIX  --> HM
+    INST -->|"live links"| CFG
+    HM   -->|"store links"| CFG
+    CFG  -->|"per project"| DEV
 
     classDef base   fill:#eff1f5,stroke:#6c6f85,stroke-width:2px,color:#4c4f69;
+    classDef brew   fill:#fde9dc,stroke:#fe640b,stroke-width:3px,color:#fe640b;
     classDef nix    fill:#dce0fb,stroke:#1e66f5,stroke-width:3px,color:#1e66f5;
-    classDef darwin fill:#fde9dc,stroke:#fe640b,stroke-width:3px,color:#fe640b;
     classDef home   fill:#f0e2fd,stroke:#8839ef,stroke-width:3px,color:#8839ef;
-    classDef devenv fill:#e0f2db,stroke:#40a02b,stroke-width:3px,color:#40a02b,stroke-dasharray:5 5;
+    classDef client fill:#e0f2db,stroke:#40a02b,stroke-width:3px,color:#40a02b,stroke-dasharray:5 5;
 
     class HW base;
-    class NIX nix;
-    class DAR darwin;
-    class HM home;
-    class DEV devenv;
+    class BREW,INST brew;
+    class NIX,HM nix;
+    class CFG home;
+    class DEV client;
 
-    linkStyle 0,1,2,4 stroke:#9ca0b0,stroke-width:2px;
-    linkStyle 3 stroke:#40a02b,stroke-width:2px,stroke-dasharray:6 4;
+    linkStyle 0,1,4 stroke:#fe640b,stroke-width:2px;
+    linkStyle 2,3,5 stroke:#1e66f5,stroke-width:2px;
+    linkStyle 6 stroke:#40a02b,stroke-width:2px,stroke-dasharray:6 4;
 ```
 
 ### Profiles
 
-The home-manager layer is **three entry points over one shared core**, so the
-same shell, keybinds and dotfiles land on a laptop and on a server the size of a
+The Linux side is **two home-manager entry points over one shared core**, so the
+same shell, keybinds and dotfiles land on a desktop and on a server the size of a
 CAX11. Where you add a package decides how far it travels:
 
 ```mermaid
@@ -78,15 +91,12 @@ flowchart LR
     WS["`**workstation.nix**
     + desktop layer
     packages/workstation.nix · dotfiles/workstation.nix`"]
-    MAC["`**darwin.nix** — macOS
-    GUI configs · wallpaper`"]
     LIN["`**linux.nix** — Linux desktop
     + Catppuccin Mocha`"]
     SRV["`**server.nix** — headless
     + Mocha · lazydocker`"]
 
     SH  --> WS
-    WS  --> MAC
     WS  --> LIN
     SH  -.-> SRV
 
@@ -97,18 +107,23 @@ flowchart LR
 
     class SH core;
     class WS desk;
-    class MAC,LIN leaf;
+    class LIN leaf;
     class SRV server;
 
-    linkStyle 0,1,2 stroke:#9ca0b0,stroke-width:2px;
-    linkStyle 3 stroke:#40a02b,stroke-width:2px,stroke-dasharray:6 4;
+    linkStyle 0,1 stroke:#9ca0b0,stroke-width:2px;
+    linkStyle 2 stroke:#40a02b,stroke-width:2px,stroke-dasharray:6 4;
 ```
 
 | Profile | Apply with | Flake output |
 |---|---|---|
-| `home/darwin.nix` | `make apply` (`nix run .#mac`) | `darwinConfigurations.mac` |
+| **macOS** — `Brewfile` + `install.sh` | `make apply` (`./install.sh`) | none — no Nix on the Mac |
 | `home/linux.nix` | `make apply` (`nix run .#linux`) | `homeConfigurations.<you>` · `<you>-aarch64` |
 | `home/server.nix` | `nix run .#server` — no make target | `homeConfigurations.<serverUser>-server` · `-aarch64` |
+
+The Mac sits outside this graph: its `Brewfile` mirrors the workstation set section
+for section, and `install.sh` links the same `home/config/` tree. A package added to
+`packages/workstation.nix` reaches the Linux desktop only — the Mac wants its own
+`Brewfile` line.
 
 The headless profile importing `shared.nix` **directly** is the whole
 distinction — no Zed/1Password, no colima VM, no node/bun/pnpm, no media
@@ -119,54 +134,54 @@ built for `x86_64` and `aarch64`, so a Hetzner box works whichever it is.
 <details>
 <summary><h2>Features</h2></summary>
 
-- **One command, reproducible** — `bootstrap.sh` brings up the whole machine; idempotent and safe to re-run.
-- **Cross-platform, one config** — identical CLI environment on macOS, non-NixOS Linux, and headless servers; each profile just stops at a different layer.
-- **Nix-first** — every CLI and runtime from nixpkgs (unstable, latest versions); Homebrew only for GUI `.app`s nixpkgs lacks.
-- **Dotfiles as code** — `~/.config/*` are read-only symlinks from the repo (nvim & Zed kept granular so they keep their own state).
+- **One command** — `bootstrap.sh` brings up the whole machine; idempotent and safe to re-run.
+- **Cross-platform, one config** — the same `home/config/` shell, keybinds and tool configs on macOS, non-NixOS Linux, and headless servers; only the package manager underneath differs.
+- **Homebrew on the Mac, Nix on Linux** — every Mac CLI, runtime, font and GUI app is one line in the `Brewfile` (upstream-current, no rebuilds); Linux desktops and servers keep a pinned nixpkgs-unstable closure through home-manager.
+- **Dotfiles as code** — on the Mac, `~/.config/*` are live, writable symlinks into the checkout, so an edit applies the moment it's saved (nvim linked file by file; lazygit & Zed get writable copies because they rewrite their own config). On Linux, home-manager links them read-only from the store.
 - **Theme follows the OS** — Catppuccin Mocha (dark) / Latte (light); no switcher, no rebuild.
-- **One-line tool changes** — add or remove a name in a single file, then `make apply`.
-- **Forkable** — the account is auto-detected; just swap the cask list and it's yours.
-- **Client tools stay out** — kubectl, terraform and friends live per-client in [devenv.sh](https://devenv.sh), never here. (`awscli2` is the one deliberate exception: agents call `aws` directly.)
+- **One-line tool changes** — add or remove a line in the `Brewfile` (Mac) or a name in one `.nix` file (Linux), then `make apply`.
+- **Forkable** — nothing account-specific on the Mac; just swap the casks in the `Brewfile` and it's yours.
+- **Client tools stay out** — kubectl, terraform and friends live per client in a private repo (a Homebrew `Brewfile` each, plus a direnv `envrc` for the env vars and helper scripts), never here. (`awscli` is the one deliberate exception: agents call `aws` directly.)
 
 </details>
 
 <details>
 <summary><h2>Why this — vs chezmoi · stow · mise</h2></summary>
 
-Most dotfile tools manage **one slice** of a machine. This repo manages the whole
-thing — dotfiles **and** CLIs **and** runtimes **and** macOS defaults **and** GUI
-casks **and** fonts — from one declarative source, applied with one `switch`.
+This repo used to be Nix end to end — nix-darwin + home-manager on the Mac too —
+on the argument that one flake beats Stow + a Brewfile + mise. On Linux that still
+holds. On the Mac it stopped paying for itself.
 
-| Approach | Manages | Pins exact versions | Atomic + rollback | One config, macOS + Linux |
-|---|---|---|---|---|
-| **This repo** — Nix flake · home-manager · nix-darwin | dotfiles · CLIs · runtimes · macOS defaults · casks · fonts | ✅ `flake.lock` (whole closure) | ✅ generations | ✅ |
-| **Plain dotfiles + Brewfile** | dotfiles (hand-rolled symlinks) · brew pkgs | ⚠️ "latest at install" | ❌ | ⚠️ manual branches |
-| **GNU Stow** | dotfile symlinks only | ❌ no packages | ❌ | ⚠️ symlinks only |
-| **chezmoi** | dotfiles (+ templates, secrets) | ❌ installs via imperative hooks | ❌ | ⚠️ dotfiles only |
-| **mise / asdf** | per-project runtimes + tasks | ✅ per project, not the OS | ❌ | ⚠️ runtimes only |
-| **Ansible / dotbot / yadm** | imperative convergence / symlinks | ❌ | ❌ | ⚠️ varies |
+**Why the Mac left Nix.** Every change was a rebuild, the store grew to ~36 GB, GUI
+apps came from Homebrew casks anyway, fast-moving tools lagged upstream in nixpkgs,
+and a `/nix/store` binary can't self-update. That's a lot of time, disk and friction
+for reproducibility a single laptop rarely cashes in. So the Mac is now a `Brewfile`
+plus plain symlinks: installs are fast, packages are upstream-current, and a dotfile
+edit is live the moment it's saved — nothing to build or switch.
 
-**Why Nix won here**
+**The trade-off** — no lockfile and no rollback on the Mac. Versions are "latest at
+install", `brew upgrade` moves them, and a bad upgrade is fixed by hand. For a
+machine you sit in front of, an easy trade.
 
-- **One model, not four.** Stow + a Brewfile + mise + a secrets tool ≈ what a
-  single flake already does — minus the lockfile and the rollback.
-- **Reproducible by construction.** `flake.lock` pins every input; the same lock
-  rebuilds the same closure on any machine. Brew/chezmoi/mise pin loosely, or only
-  per-project.
-- **Atomic switch + rollback.** A failed `switch` doesn't half-apply, and a bad one
-  rolls back to the previous generation. Imperative tools strand you mid-migration.
-- **One config, two OSes.** The same home-manager layer builds on macOS and Linux.
-- **Nothing scattered.** Tools live in the Nix store and compose into your profile —
-  no drift in `/usr/local`. Per-project toolchains stay in [devenv.sh](https://devenv.sh).
+**Why Linux keeps Nix.** A headless box is where reproducibility earns its keep:
+`flake.lock` pins the whole closure, a switch is atomic with generations behind it,
+and the homelab repo's Ansible role builds the server profile from this flake,
+unattended.
 
-**The honest cost** — Nix has the steepest learning curve of the bunch and a larger
-store on disk, and GUI apps still come from Homebrew casks. The payoff: the machine
-is a build artifact, not a pile of remembered steps.
+| | macOS | Linux · servers |
+|---|---|---|
+| Packages | Homebrew — `Brewfile` | nixpkgs-unstable — `home/packages/` |
+| Dotfiles | live, writable symlinks (`install.sh`) | home-manager, read-only from the store |
+| Pinned versions | ⚠️ "latest at install" | ✅ `flake.lock` (whole closure) |
+| Rollback | ❌ | ✅ generations |
+| A dotfile edit applies | instantly — it's a symlink | on the next switch |
+| System defaults | `macos.sh` | — |
 
-**Where the others still fit** — `mise`/`devenv` shine at *per-project* runtimes;
-this repo uses [devenv.sh](https://devenv.sh) for exactly that. chezmoi's templating
-and secrets are deliberately out of scope — secrets stay in 1Password and client
-config in a private devenv repo, never in the dotfiles.
+**Where the others fit** — the Mac half is now roughly *Stow + a Brewfile*, with a
+short `install.sh` in place of Stow because a few configs need a writable copy, a
+generated file or a launchd agent. chezmoi's templating and secrets are deliberately
+out of scope — secrets stay in 1Password, client config in a private repo. mise/asdf
+shine at per-project runtimes; here that job goes to a per-client Brewfile + direnv.
 
 </details>
 
@@ -175,27 +190,33 @@ config in a private devenv repo, never in the dotfiles.
 
 ```
 dotfiles/
-├── flake.nix             # inputs (unstable) + outputs (apps · checks · configs)
-├── flake.lock            # pinned
-├── username.nix          # the account to build for (stamped by bootstrap)
+├── Brewfile              # macOS: every CLI, runtime, font and GUI cask (brew bundle)
+├── install.sh            # macOS: brew bundle + live symlinks into ~ and ~/.config + launchd agent
+├── macos.sh              # macOS: system defaults — Dock, Finder, keyboard, trackpad, Spotlight keys
 ├── bootstrap.sh          # one command on a fresh machine, macOS or Linux
-├── apply.sh              # rebuild wrapper behind `nix run .#mac|linux|server` — nom + nvd
-├── Makefile              # the entry point: make apply · home · update · diff · check
+├── Makefile              # the entry point: make apply · home · update · … (detects the platform)
+├── flake.nix             # Linux: inputs (unstable) + outputs (apps · checks · home configs)
+├── flake.lock            # pinned
+├── username.nix          # the account the Linux flake builds for (stamped by bootstrap)
+├── apply.sh              # Linux: rebuild wrapper behind `nix run .#linux|server` — nom progress
 ├── statix.toml           # Nix lint config (nix flake check)
-├── nix/lib.nix           # flake helpers: mkDarwin · mkHome · lint · fmt
-├── hosts/mac.nix         # macOS system layer + GUI casks
+├── nix/lib.nix           # flake helpers: mkHome · lint · fmt
 ├── wallpaper/            # mac/ dynamic .heic (shuffled) + iphone/ png
-├── .github/              # demo (tape + gif) + CI (lint/fmt on push)
+├── .github/              # demo (tape + gif) + CI (lint · fmt · workflow tests · eval, on push and PRs)
+├── tests/                # workflow regression suite (make test)
+├── .sops.yaml            # sops recipients (Linux sops-nix)
 └── home/
-    ├── shared.nix        # portable user core (zsh, direnv) — the floor every profile stands on
-    ├── workstation.nix   # shared + the desktop layer — imported by mac AND linux
-    ├── darwin.nix        # macOS entry point: workstation + GUI configs + wallpaper
+    ├── zsh/              # macOS ~/.zshenv · .zprofile · .zshrc (linked by install.sh)
+    ├── bin/              # macOS helpers — wallpaper-shuffle (the launchd agent's script)
+    ├── shared.nix        # Linux: portable user core (zsh, direnv) — the floor every profile stands on
+    ├── workstation.nix   # shared + the desktop layer — imported by linux.nix
     ├── linux.nix         # Linux desktop entry point: workstation + Mocha
     ├── server.nix        # headless entry point: shared + Mocha, no desktop weight
     ├── theme-mocha.nix   # catppuccin/nix Mocha — Linux side only; the Mac autoswitches
     ├── packages/         # nixpkgs tools — core.nix (everywhere) + workstation.nix (desktop)
-    ├── dotfiles/         # → read-only ~/.config symlinks, split the same core/workstation way
-    └── config/           # the actual dotfiles (shell/ nvim/ zed/ ghostty/ …)
+    ├── dotfiles/         # → read-only ~/.config symlinks on Linux, split the same core/workstation way
+    └── config/           # the actual dotfiles, both platforms (shell/ nvim/ zed/ ghostty/ …)
+        └── shell/path.zsh  # PATH order for both: opencode > GNU gnubin > Homebrew > system
 ```
 
 </details>
@@ -213,7 +234,7 @@ explicitly bypasses this protection and can discard local work.
 curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh | bash
 ```
 
-- **macOS** → Xcode CLT → Lix → Homebrew → clone → `darwin-rebuild switch`
+- **macOS** → Xcode CLT → Homebrew → clone → `./install.sh` (Brewfile + links) → `./macos.sh` (system defaults). No Nix. Touch ID for `sudo` and disabling Guest login are root-owned, so they stay one-time manual one-liners, listed at the bottom of `macos.sh`.
 - **Linux** (non-NixOS) → Lix → clone → `home-manager switch` (no system layer; the switch needs no sudo, though installing Lix + enrolling a trusted user does)
 - **Headless** → *not* this script. Once Lix and the clone exist, the no-desktop
   profile is `nix run .#server` — it supplies the pinned Home Manager CLI, so no
@@ -228,24 +249,27 @@ curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh |
 
 ### What runs where
 
-| Concern | Managed by |
-|---|---|
-| CLI tools everywhere, laptop or server | **nixpkgs** — `home/packages/core.nix` |
-| JS runtimes (node/bun) + GUI editor (Zed) — desktops only | **nixpkgs** — `home/packages/workstation.nix` |
-| zsh + plugins (autosuggestions, syntax-highlighting, fzf-tab), direnv | **home-manager** — `home/shared.nix` |
-| Dotfiles (`~/.config/*`) imported as read-only symlinks | **home-manager** — `home/dotfiles/` → `home/config/` |
-| macOS defaults, fonts, the user, system zsh *(macOS only)* | **nix-darwin** — `hosts/mac.nix` |
-| macOS GUI configs (karabiner) + the shuffled wallpaper | **home-manager** — `home/darwin.nix` |
-| GUI `.app` casks (1Password, Chrome, Slack, …) *(macOS only)* | **Homebrew**, driven declaratively by nix-darwin |
-| Per-client toolchains (kubectl, terraform, …) | **devenv.sh** — *never in this repo* |
+| Concern | macOS | Linux |
+|---|---|---|
+| CLI tools | **Homebrew** — `Brewfile` | **nixpkgs** — `home/packages/core.nix` (servers too) |
+| Runtimes (node/bun/pnpm/uv), containers, media | **Homebrew** — `Brewfile` | **nixpkgs** — `home/packages/workstation.nix` (desktops only) |
+| GUI `.app`s + fonts | **Homebrew** casks — `Brewfile` | — |
+| zsh entry points + plugins, direnv | `home/zsh/` (linked by `install.sh`) + brew's zsh plugins | **home-manager** — `home/shared.nix` |
+| PATH order | `home/config/shell/path.zsh` | the same file |
+| Dotfiles (`~/.config/*`) | **live, writable symlinks** — `install.sh` → `home/config/` | **read-only symlinks** — `home/dotfiles/` → `home/config/` |
+| macOS defaults (Dock, Finder, keyboard, trackpad) | `macos.sh` | — |
+| Shuffled wallpaper | launchd agent from `install.sh` → `home/bin/wallpaper-shuffle` | — |
+| Per-client toolchains (kubectl, terraform, …) | private `Brewfile` per client (installed globally) + a direnv `envrc` for env vars and `bin/` helpers — *never in this repo* | — (the server does no client work) |
 
-**Why Homebrew at all?** Almost everything is in Nix — even things that are
-casks/taps elsewhere (`_1password-cli`, `maple-mono`, the
-`zed-editor` app). GUI apps with no good nixpkgs build stay on brew, plus the
-occasional CLI nixpkgs can't ship current enough — those go in `homebrew.brews`
-in `hosts/mac.nix`, one stated reason each (today: `superfile`, where nixpkgs
-sits on 1.3.3 against brew's 1.6.0). The zap-prune cuts both ways: a `brew
-install` you never declared is removed on the next switch.
+**Why two package managers?** On the Mac, Homebrew is what the ecosystem ships for:
+upstream-current formulae, every GUI cask, the fonts — no build step, and a tool
+with its own updater (codex, opencode, claude) can actually update itself. Linux
+boxes, servers above all, get more from Nix: a locked closure the homelab's Ansible
+role can rebuild unattended. The tool lists mirror each other on purpose (same
+sections in `Brewfile` and `home/packages/`), so the shell feels the same on both.
+`brew bundle` is additive: it installs what's missing and never removes anything, so
+a `brew install` you never declared stays until `make outdated` flags it and you
+prune it (`brew bundle cleanup --force`).
 
 ### Daily use — `make`
 
@@ -254,40 +278,55 @@ themselves, so the same command works on either. Run `make` on its own for the l
 
 ```bash
 make            # list every target (with the detected host)
-make apply      # ← the one you want: build + activate this host
-make home       # dotfiles / shell / nvim only — no sudo, seconds not minutes
-make update     # bump EVERYTHING pinned (see below)
+make apply      # ← the one you want: install packages + apply configs on this host
+make home       # configs only — no package changes
+make update     # upgrade EVERYTHING (see below)
 ```
 
-**`make apply` vs `make home`** is the distinction worth internalising. home-manager
-is a nix-darwin module here, so a full `apply` needs root — but only for the system
-half: `/etc`, launchd, macOS defaults, and the per-user *package* profile (which
-`useUserPackages` puts in `/etc/profiles/per-user`). Editing a dotfile touches none
-of that, so `make home` re-activates just the user layer with no sudo and no wait.
-It runs the very same activation script nix-darwin would exec, read out of the
-darwin config — not a parallel `homeConfigurations` output that could drift from it.
-New **packages, casks, macOS defaults or launchd agents still need `make apply`**.
+**`make apply` vs `make home`.** On the Mac, `make apply` is `./install.sh`:
+`brew bundle --no-upgrade` (installs whatever the Brewfile lists that's missing,
+upgrades nothing), then the symlinks, the writable lazygit/Zed copies, the generated
+gh-dash configs, gh's config + the gh-dash extension, the docker CLI-plugin dir and
+the wallpaper agent. `make home` is `./install.sh --no-brew` — the same minus
+Homebrew, seconds not minutes. Neither needs sudo (a few cask installers ask for a
+password on first install). For a plain dotfile edit you need neither: the links
+point into the checkout, so a saved change is already live. Run `make home` after
+adding a `link` line to `install.sh` or to re-seed the lazygit/Zed copies from the
+repo; `make apply` after editing the `Brewfile`. `make macos` re-applies `macos.sh`
+— only needed on a fresh Mac or after changing a value there, since the preference
+plists persist on their own.
 
-**`make update` does more than `nix flake update`.** Two pin sets move together,
-and both land in `git diff` next to each other:
+On Linux both are a home-manager switch — `make apply` through `apply.sh` (stages
+new files, nom progress, `-b backup`), `make home` calling `home-manager switch`
+directly — and new packages and dotfile edits alike need one.
+
+**`make update` does more than upgrade packages.** On the Mac it's `brew update &&
+brew upgrade` — upgrades land in place, there is no separate apply. On Linux it's
+`nix flake update`; follow it with `make apply` to switch. Either way the nvim plugin
+pins move too — `lazy-lock.json` links into the checkout, so the bump lands in
+`git diff` (on Linux, right next to `flake.lock`):
 
 | | |
 |---|---|
-| `flake.lock` | nixpkgs · nix-darwin · home-manager |
-| `home/config/nvim/lazy-lock.json` | via `nvim --headless '+Lazy! update'` |
+| `flake.lock` *(Linux)* | nixpkgs · home-manager · catppuccin · nix-index-database · sops-nix |
+| `home/config/nvim/lazy-lock.json` *(both)* | via `nvim --headless '+Lazy! update'` |
 
-Reaching for `nix flake update` by hand silently skips the plugin pass, and those
-pins drift quietly. Narrow it with `make update I=nixpkgs` — naming a single input updates
-*only* that input and deliberately skips the plugin pass.
+Reaching for `brew upgrade` or `nix flake update` by hand silently skips the plugin
+pass, and those pins drift quietly. On Linux, narrow it with `make update I=nixpkgs` —
+naming a single input updates *only* that input and deliberately skips the plugin pass.
 
 | Inspect | |
 |---|---|
-| `make diff` | build, then `nvd` what would change vs the running system — **the pre-flight for `apply`** |
-| `make build` | build without activating (leaves `./result`) |
-| `make generations` | list past generations |
-| `make check` | `nix flake check` — lint, fmt, workflow tests, and this host's declared config builds |
-| `make lint` · `make fmt` | fast statix check, no build · format every `.nix` (nixfmt) |
-| `make test` | isolated bootstrap/apply/shell regressions, including first-run CLI wiring; no system activation |
+| `make outdated` | **macOS** — `brew outdated`, then a `brew bundle cleanup` dry run: what's installed but not in the `Brewfile` |
+| `make diff` | **Linux** — build, then `nvd` what would change vs the running home env — **the pre-flight for `apply`** |
+| `make build` | **Linux** — build without activating (leaves `./result`) |
+| `make generations` | **Linux** — list past home-manager generations |
+| `make check` | **Linux** — `nix flake check`: lint, fmt, workflow tests, and the home + server configs build |
+| `make lint` · `make fmt` | **Linux** — fast statix check, no build · format every `.nix` (nixfmt) |
+| `make test` | **Linux** — isolated bootstrap/apply/shell regressions, including first-run CLI wiring; no activation |
+
+On a Mac the Nix targets (`make linux` included) print a "Linux-only" pointer
+instead of failing on a missing `nix`.
 
 The workflow suite lives in `tests/test_workflows.py` and runs in CI too. It uses
 throwaway homes and Git repositories, the real packaged Home Manager drivers,
@@ -297,111 +336,115 @@ Bash and Zsh installed (the packaged-app test is skipped).
 
 | Recover / reclaim | |
 |---|---|
-| `make rollback` | activate the previous generation (macOS) |
-| `make gc` | drop old generations, collect garbage, optimise the store |
-| `make cleanup` | `gc` **plus** docker prune and go/brew/pnpm caches |
+| `make rollback` | **Linux** — home-manager has no one-shot rollback; points you at `make generations`. (The Mac has none — see *Why this* above.) |
+| `make gc` | macOS: `brew cleanup --prune=all` · Linux: drop old generations, collect garbage, optimise the store |
+| `make cleanup` | docker prune **plus** go/brew/pnpm caches (+ the Nix GC on Linux) |
 | `make clean` | just remove `./result` symlinks |
 
 | Setup | |
 |---|---|
 | `make bootstrap` | fresh machine / full re-provision (`./bootstrap.sh`) |
-| `make demo` | re-record the README showcase gif (vhs · macOS) |
+| `make macos` | re-apply the macOS defaults (`./macos.sh`) |
+| `make demo` | re-record the README showcase gif (`vhs .github/demo.tape`; needs `brew install vhs`) |
 
 Plus three you rarely type: `make help` (what bare `make` runs), `make switch`
-(alias for `apply`), and `make mac` / `make linux` — the same thing as `apply`
-with the host pinned instead of detected.
+(alias for `apply`), and `make linux` — `nix run .#linux` with the host pinned
+instead of detected.
 
 <details>
 <summary>What <code>make apply</code> is wrapping</summary>
 
-The targets are thin wrappers, so the flake apps stay the source of truth — reach
-for these when you want to be explicit, or on a box where `make apply` would guess
-wrong (a headless server auto-detects as `linux`, which is the *desktop* profile —
-use `nix run .#server` there).
+The targets are thin wrappers. On the Mac that's `./install.sh` and `./macos.sh` —
+run them directly whenever you like. On Linux the flake apps stay the source of
+truth — reach for these when you want to be explicit, or on a box where `make apply`
+would guess wrong (a headless server auto-detects as `linux`, which is the *desktop*
+profile — use `nix run .#server` there).
 
 ```bash
-nix run .#mac      # apply.sh mac    → sudo darwin-rebuild switch --flake .#mac
-nix run .#linux    # apply.sh linux  → home-manager switch --flake .#<you> -b backup
-nix run .#server   # apply.sh server → home-manager switch --flake .#<serverUser>-server
-nix run .#demo     # re-record the showcase gif (vhs · macOS only)
+./install.sh             # macOS: brew bundle --no-upgrade + links + agents
+./install.sh --no-brew   # macOS: links only
+nix run .#linux          # apply.sh linux  → home-manager switch --flake .#<you> -b backup
+nix run .#server         # apply.sh server → home-manager switch --flake .#<serverUser>-server
 
-nix build --dry-run .#darwinConfigurations.mac.system   # evaluate, don't apply
+nix build --dry-run .#homeConfigurations.<you>.activationPackage   # evaluate, don't apply
 ```
 
 `apply.sh` stages changes, including new files, in ordinary clones and linked Git
 worktrees (flakes only see tracked files). A staging failure stops the apply.
 The Linux desktop and server apps both carry the flake-pinned Home Manager CLI.
 The wrapper shows the live build
-tree via [nix-output-monitor](https://github.com/maralorn/nix-output-monitor), keeps
-the build log on screen so a failed switch stays debuggable, and on macOS prints an
-`nvd` diff of what changed afterwards.
+tree via [nix-output-monitor](https://github.com/maralorn/nix-output-monitor), and keeps
+the build log on screen so a failed switch stays debuggable.
 
 </details>
 
-### nh — optional, for Homebrew muscle-memory
+### nh and `,` — Linux only
 
-`make` covers the daily loop; [`nh`](https://github.com/nix-community/nh) is a
-friendly front-end for the same build / search / garbage-collect operations (nom
-progress + a generation diff built in), handy while `brew` reflexes fade:
-
-| Homebrew | here |
-|---|---|
-| `brew install foo` | add `foo` to `home/packages/core.nix` → `nh darwin switch` |
-| `brew uninstall foo` | remove it from `home/packages/core.nix` → `nh darwin switch` |
-| `brew search foo` | `nh search foo` |
-| `brew upgrade` | **`make update`** — flake.lock *plus* the nvim plugin pins |
-| `brew cleanup` (+ autoremove) | `nh clean all` |
-
-Point `nh` at this repo once so the subcommands need no path argument:
+`make` covers the daily loop; on Linux, [`nh`](https://github.com/nix-community/nh)
+is a friendly front-end for the same build / search / garbage-collect operations
+(nom progress + a generation diff built in). Point it at this repo once:
 
 ```bash
 export NH_FLAKE="$HOME/Developer/dotfiles"   # adjust to your clone; add to your shell rc
-```
-
-```bash
-nh darwin switch     # build + activate (sudo auto), live progress + change diff
+nh home switch       # build + activate, live progress + change diff
 nh search ripgrep    # find a package on nixpkgs
 nh clean all         # garbage-collect old generations + the store
 ```
 
-Two caveats: `nh` doesn't stage files, so run `git add -A` first (flakes only see
-tracked files — `make apply` does this for you); and **GUI apps still come from
-Homebrew casks** (declared in `hosts/mac.nix`) — `nh`/Nix manage the
-CLI/Nix side, not casks.
+`nh` doesn't stage files, so run `git add -A` first (flakes only see tracked files —
+`make apply` does this for you).
 
 `,` ([comma](https://github.com/nix-community/comma)) complements it: `, cowsay hi`
-runs any nixpkg without installing it. The lookup database is not built locally —
+runs any nixpkg without installing it, and an unknown command suggests exactly that.
+The lookup database is not built locally —
 [nix-index-database](https://github.com/nix-community/nix-index-database) is a
-flake input pinned in `flake.lock`, so `,` works on a fresh machine with nothing
+flake input pinned in `flake.lock`, so `,` works on a fresh box with nothing
 to run by hand, and `make update` refreshes the index along with everything else.
+
+None of this exists on the Mac: there you use `brew` directly (`brew search`,
+`brew install`, then record it in the `Brewfile`), and a missing command gets zsh's
+plain "command not found".
 
 ### Adding / removing a tool
 
 This is meant to be a one-line change.
 
+**macOS**
+
+- **A CLI, runtime or font** → a `brew "…"` line (fonts: `cask "font-…"`) in `Brewfile`,
+  then `make apply`. Or `brew install x` first and record it in the `Brewfile`
+  after — `make outdated` lists anything installed but undeclared.
+- **A GUI `.app`** → a `cask "…"` line in `Brewfile`.
+- **A dotfile** → drop it in `home/config/<tool>/` and add a `link` line to
+  `install.sh` (`put` instead for an app that rewrites its own config), then
+  `make home`. A new file inside an already-linked directory (`shell/`, `git/`) is
+  live with no step at all.
+- **Removing** → delete the line and `brew uninstall` it — nothing is removed for you.
+
+**Linux**
+
 - **A CLI you want everywhere**, servers included → `home/packages/core.nix`.
 - **A CLI or runtime for machines you sit at** → `home/packages/workstation.nix`
-  (Mac + Linux desktop; the headless profile never sees it).
-- **A macOS-only CLI** → `home/darwin.nix`. **Server-only** → `home/server.nix`.
-- **A macOS GUI `.app`** → add/remove a cask in `hosts/mac.nix`.
+  (the Linux desktop; the headless profile never sees it). **Server-only** → `home/server.nix`.
 - **A dotfile** → drop it in `home/config/<tool>/` and reference it in
-  `home/dotfiles/core.nix` (or `dotfiles/workstation.nix` for desktop-only,
-  `home/darwin.nix` for macOS-only).
+  `home/dotfiles/core.nix` (or `dotfiles/workstation.nix` for desktop-only).
 
 Then `make apply` (or `make home` if it was only a dotfile). Search names at
-[search.nixos.org/packages](https://search.nixos.org/packages).
+[search.nixos.org/packages](https://search.nixos.org/packages). A tool you want on
+both platforms is two lines: one in the `Brewfile`, one in `home/packages/`.
 
 </details>
 
 <details>
 <summary><h2>Packages</h2></summary>
 
-Optional reference — every tool in [`home/packages/`](home/packages) with a
-one-line note (plus fonts from `hosts/mac.nix`). GUI
-`.app` casks: `homebrew.casks` in `hosts/mac.nix`.
+Optional reference — every tool in [`home/packages/`](home/packages) (the Linux
+side) with a one-line note. The Mac's [`Brewfile`](Brewfile) mirrors it section for
+section, plus the fonts and GUI `.app` casks; where the two differ, the `Brewfile`
+is what the Mac actually gets.
 
 Everything below is in [`core.nix`](home/packages/core.nix) and lands on every
-profile, servers included — **except the *(desktop)* ones**, which live in
+Linux profile, servers included — **except the *(desktop)* ones**, which live in
 [`workstation.nix`](home/packages/workstation.nix) and never reach a headless box.
 
 **core shell / file utils**
@@ -437,10 +480,10 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 | [gh](https://cli.github.com/) | GitHub CLI (via `programs.gh`) |
 | [gh-dash](https://github.com/dlvhdr/gh-dash) | PR/issue dashboard — `gh` extension, run `gh dash` (`ghd`) |
 | [lazygit](https://github.com/jesseduffield/lazygit) | git TUI |
-| [lazyworktree](https://github.com/chmouel/lazyworktree) | git worktree manager TUI (`lwt`) |
+| [lazyworktree](https://github.com/chmouel/lazyworktree) | git worktree manager TUI (`lwt`) *(Linux only — not on Homebrew)* |
 | [delta](https://github.com/dandavison/delta) | syntax-highlighting diff pager |
 
-**nix helpers**
+**nix helpers** *(Linux only — the Mac has no Nix)*
 
 | tool | what it is |
 |---|---|
@@ -459,7 +502,6 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 | [bun](https://bun.sh) | JS runtime + bundler + PM *(desktop)* |
 | [pnpm](https://pnpm.io/) | fast JS package manager *(desktop)* |
 | [tree-sitter](https://github.com/tree-sitter/tree-sitter) | incremental parser |
-| [devenv](https://github.com/cachix/devenv) | per-project dev shells (devenv.sh) *(desktop)* |
 | [uv](https://docs.astral.sh/uv/) | Python installer/runner; `uvx` for one-off tools *(desktop)* |
 
 **editor**
@@ -518,7 +560,7 @@ profile, servers included — **except the *(desktop)* ones**, which live in
 
 Not in nixpkgs on purpose — claude, opencode and codex each ship their own
 self-updating installer, so pinning them to a flake would freeze them until the
-next `make update`. `ai-update` drives each one's updater and `cc` / `oc` / `cx`
+next `make update`. (On the Mac, codex is a `Brewfile` cask instead.) `ai-update` drives each one's updater and `cc` / `oc` / `cx`
 run them with permissions bypassed (`home/config/shell/ai.zsh`). Worktrees are
 plain `git worktree add`.
 
@@ -529,7 +571,7 @@ plain `git worktree add`.
 | [fastfetch](https://github.com/fastfetch-cli/fastfetch) | system info (neofetch-like) |
 | [glow](https://github.com/charmbracelet/glow) | render markdown in the terminal |
 | [gum](https://github.com/charmbracelet/gum) | shell-script UI toolkit |
-| [hackernews-tui](https://github.com/aome510/hackernews-TUI) | Hacker News reader (`hn`) *(desktop)* |
+| [hackernews-tui](https://github.com/aome510/hackernews-TUI) | Hacker News reader (`hn`) *(Linux desktop only — not on Homebrew)* |
 | [bagels](https://github.com/EnhancedJax/Bagels) | expense tracker TUI (`bagels`) *(desktop)* |
 | [harlequin](https://harlequin.sh/) | SQL IDE for the terminal (`harlequin`) *(desktop)* |
 
@@ -538,7 +580,7 @@ plain `git worktree add`.
 | tool | what it is |
 |---|---|
 | [awscli2](https://aws.amazon.com/cli/) | `aws` CLI — called directly by agents *(desktop)* |
-| [cloudlens](https://github.com/one2nc/cloudlens) | k9s-like TUI for AWS/GCP (`cloudlens`) *(desktop)* |
+| [cloudlens](https://github.com/one2nc/cloudlens) | k9s-like TUI for AWS/GCP (`cloudlens`) *(Linux desktop only — not on Homebrew)* |
 
 **secrets**
 
@@ -573,14 +615,14 @@ sops.secrets.some-token = { };                    # → ~/.config/sops-nix/secre
 | [imagemagick](https://imagemagick.org/) | image convert & edit *(desktop)* |
 | [yt-dlp](https://github.com/yt-dlp/yt-dlp) | video/audio downloader (YouTube + 1000s of sites) *(desktop)* |
 
-**GUI apps (from nixpkgs)**
+**GUI apps (from nixpkgs; casks on the Mac)**
 
 | tool | what it is |
 |---|---|
 | [_1password-cli](https://developer.1password.com/docs/cli/) | 1Password CLI (`op`) *(desktop)* |
 | [zed-editor](https://zed.dev) | code editor (CLI: `zeditor`) *(desktop)* |
 
-**fonts & macOS extras (nix)**
+**fonts & macOS extras (`Brewfile`)**
 
 | tool | what it is |
 |---|---|
@@ -593,11 +635,12 @@ sops.secrets.some-token = { };                    # → ~/.config/sops-nix/secre
 <details>
 <summary><h2>Fork</h2></summary>
 
-**No username to set** — `bootstrap.sh` stamps the running account into
-`username.nix`, which the flake reads (pure eval), so the same config builds for
-any user on any machine with no manual edit. Just adjust the cask list in
-`hosts/mac.nix` to taste. (Applying by hand instead of via bootstrap?
-Put your account in `username.nix`; it defaults to `mohammed`.)
+**No username to set.** On the Mac nothing is account-specific — `install.sh`
+works off `$HOME` — so forking is adjusting the `Brewfile` (the casks especially)
+and the pinned Dock apps in `macos.sh` to taste. On Linux, `bootstrap.sh` stamps the
+running account into `username.nix`, which the flake reads (pure eval), so the same
+config builds for any user on any machine with no manual edit. (Applying by hand
+instead of via bootstrap? Put your account in `username.nix`; it defaults to `mohammed`.)
 
 </details>
 
@@ -625,8 +668,8 @@ tools follow live, GUI apps on relaunch.
 It can't autoswitch — its config takes one colour per role, and lipgloss flattens
 adaptive colours to concrete RGB before they reach the terminal, so a configured
 ANSI index never survives. It ships two theme files
-(`home/config/gh-dash/theme-{mocha,latte}.yml`, appended to a shared base at build
-time) and the `ghd` shell function reads `AppleInterfaceStyle` to pick one at
+(`home/config/gh-dash/theme-{mocha,latte}.yml`, appended to a shared base by
+`install.sh` on the Mac and at build time on Linux) and the `ghd` shell function reads `AppleInterfaceStyle` to pick one at
 launch. That's the only shell glue and the only hand-written theme in the repo.
 Two honest limits: the flavour is chosen when the dashboard starts, so it won't
 follow a switch mid-session, and plain `gh dash` (rather than `ghd`) always gets
@@ -687,24 +730,28 @@ Stock **LazyVim** keymaps plus a few rebinds: `Ctrl-h/j/k/l` navigates nvim spli
 | `Esc` · `v` | vi normal mode · edit command in `$EDITOR` |
 | `Ctrl+A/E` · `Ctrl+K/U/W` · `Ctrl+Y` | line start/end · kill line/line-back/word · yank |
 
-Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `spf` file manager · `v`/`n` nvim · `lg` lazygit · `hn` Hacker News · `g` + git shorthands. Type **`help`** for a colour cheatsheet of the modern-CLI replacements. Source: `home/config/shell/*.zsh`.
+Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `spf` file manager · `v`/`n` nvim · `lg` lazygit · `hn` Hacker News (Linux) · `g` + git shorthands. Type **`help`** for a colour cheatsheet of the modern-CLI replacements. Source: `home/config/shell/*.zsh`.
 
 </details>
 
 <details>
 <summary><h2>Notes</h2></summary>
 
-- **nixpkgs-unstable** across nixpkgs / nix-darwin / home-manager (latest tool versions).
-- **`nix.enable = false`** — Lix owns Nix; nix-darwin doesn't manage the daemon.
-- **`allowUnfree = true`** — for the 1Password CLI, etc.
+- **No Nix on the Mac** — Homebrew owns every package there; Lix + home-manager are the Linux side only.
+- **nixpkgs-unstable** across nixpkgs / home-manager on Linux (latest tool versions).
+- **`allowUnfree = true`** (Linux) — for the 1Password CLI, etc.
 - **Scope = your daily tools only.** Per-client CLIs are out of scope by design —
-  they belong in [devenv.sh](https://devenv.sh) shells, not here.
-- **Homebrew casks are declarative** (zap-prune on activation) — a cask installed by
-  hand but not added to `hosts/mac.nix` is removed on the next `make apply`.
-- **Wallpaper** — shuffled from `wallpaper/mac/` on every switch, at login, and hourly
-  (`wallpaper-shuffle`, a launchd agent; run it by hand to reroll). The first
-  `make apply` may prompt to allow controlling System Events so it can set the
-  desktop picture — approve once.
+  they belong in a private per-client `Brewfile` (installed globally), with only the
+  env vars and helper scripts scoped by direnv — not here.
+- **Homebrew is additive** — `brew bundle` installs what's missing and never removes
+  or upgrades; a formula or cask installed by hand stays until you prune it
+  (`make outdated` lists them, `brew bundle cleanup --force` removes them).
+- **Wallpaper** — shuffled from `wallpaper/mac/` at login and hourly by the
+  `dotfiles.wallpaper-shuffle` launchd agent that `install.sh` installs
+  (`home/bin/wallpaper-shuffle`; run it by hand to reroll). The first run may prompt
+  to allow controlling System Events so it can set the desktop picture — approve once.
+- **Touch ID for `sudo` + Guest login off** — root-owned, so `macos.sh` doesn't run
+  them; they're one-time `sudo` one-liners at the bottom of that file.
 
 </details>
 
@@ -717,11 +764,12 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `spf` file m
 - [x] Linux desktop (non-NixOS)
 - [x] Linux headless — the `server.nix` profile, x86_64 + aarch64
 - [ ] WSL2 — via [NixOS-WSL](https://github.com/nix-community/NixOS-WSL) (full NixOS,
-  not standalone home-manager); see the commented `nixosConfigurations.wsl` in `flake.nix`
+  not standalone home-manager)
 
 **Test** — verified end-to-end on a fresh machine
 
-- [x] macOS
+- [ ] macOS — the Homebrew path (`bootstrap.sh` → `install.sh`) was migrated in place,
+  not yet run on a fresh machine
 - [x] Linux headless — the Hetzner box, via the homelab repo's Ansible role
 - [ ] Linux desktop
 - [ ] WSL2
@@ -731,18 +779,21 @@ Aliases: `ls`→eza · `cat`→bat · `lt` tree · `cd`→zoxide · `spf` file m
 <details>
 <summary><h2>Links</h2></summary>
 
-**Nix layer**
+**Mac layer**
+
+- [Homebrew Bundle](https://docs.brew.sh/Brew-Bundle-and-Brewfile) — the `Brewfile` format and `brew bundle` subcommands
+- [formulae.brew.sh](https://formulae.brew.sh) — find a formula or cask name
+- [macos-defaults.com](https://macos-defaults.com) — reference for the `defaults write` keys in `macos.sh`
+
+**Nix layer (Linux)**
 
 - [Lix](https://lix.systems) — the Nix interpreter/daemon this repo installs
-- [nix-darwin options](https://nix-darwin.github.io/nix-darwin/manual/) — every `system.defaults` / system key
 - [home-manager options](https://nix-community.github.io/home-manager/options.xhtml) — user-layer options
 - [search.nixos.org/packages](https://search.nixos.org/packages) — find a package name
-- [MyNixOS — nix-darwin](https://mynixos.com/nix-darwin/options/system.defaults) — searchable defaults reference
 
 **Per-client toolchains**
 
-- [devenv.sh](https://devenv.sh) — per-project reproducible shells
-- [direnv](https://direnv.net) — auto-loads a shell on `cd`
+- [direnv](https://direnv.net) — auto-loads a client's environment on `cd`
 
 **Tools**
 

@@ -60,16 +60,10 @@ in
 
     # fzf default options (FZF_DEFAULT_OPTS_FILE → ~/.config/fzf/fzfrc).
     "fzf/fzfrc".source = ../config/fzf/fzfrc;
-  }
-  # bat/btop: raw configs on macOS (theme auto-switches with the OS). On Linux
-  # they're home-manager program modules painted by catppuccin (see
-  # home/theme-mocha.nix), so symlinking the raw config here too would collide —
-  # keep it Darwin-only.
-  // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-    # btop: built-in "TTY" theme (terminal ANSI colors) — no theme files.
-    "btop/btop.conf".source = ../config/btop/btop.conf;
-    # bat ships Catppuccin built in — config selects per terminal background.
-    "bat/config".source = ../config/bat/config;
+
+    # bat/btop are deliberately absent: on Linux they're home-manager program
+    # modules painted by catppuccin (home/theme-mocha.nix), so their raw configs
+    # (config/bat, config/btop) are only linked on the Mac, by install.sh.
   };
 
   # lazygit rewrites config.yml on schema migrations, so install a writable copy

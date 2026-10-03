@@ -10,26 +10,27 @@
 
 ## My folders (under ~/Developer)
 
-- `dotfiles` — pure-Nix machine config; the source of truth (see System below).
+- `dotfiles` — machine config; the source of truth (see System below).
 - `devenv` — client + personal work. Has its own AGENTS.md for that context.
 - `LifeHQ` — Obsidian notes / personal knowledge base.
 
-## System — pure Nix
+## System — Homebrew (no Nix on this Mac)
 
-Declarative machine. Source of truth is the flake at `~/Developer/dotfiles`
-(nix-darwin + home-manager, Lix daemon). Edit the repo, then apply — hand edits don't stick.
+Source of truth is `~/Developer/dotfiles`. Edit the repo, not `~/.config`.
 
-- Dotfiles: Nix-managed (not chezmoi), symlinked read-only into `~/.config`. Edit in the repo.
-- CLI tools: nixpkgs in `home/packages/` — `core.nix` (all profiles) or `workstation.nix` (GUI machines). Not brew, not mise.
-- GUI apps: Homebrew casks, declared in `hosts/mac.nix` — that list is authoritative.
-  A few CLIs are brew formulae there too (`brews`), each with a stated reason.
-- Per-project toolchains: devenv.sh + direnv, scoped to each project's repo.
-- Apply: `nix run .#mac`. Fresh machine: `./bootstrap.sh`.
+- Packages: every CLI, font and GUI app is in `Brewfile` — that list is authoritative.
+  Add a `brew`/`cask` line, then `brew bundle --file ~/Developer/dotfiles/Brewfile`. Not mise, not Nix.
+- Dotfiles: `home/config/*`, symlinked into `~/.config` by `./install.sh` — live links, so edits apply at once.
+- macOS defaults (Dock, Finder, keyboard): `macos.sh`.
+- Per-client toolchains: `~/Developer/devenv/<client>/` — a `Brewfile` (installed globally),
+  an `envrc` loaded by direnv, and `bin/` helpers.
+- Apply: `./install.sh` (or `make apply`). Fresh machine: `./bootstrap.sh`.
+- The repo's Nix flake is Linux-only (the homelab server); never run it on the Mac.
 - Theme: Catppuccin, auto-follows the macOS light/dark appearance.
 
 ## Tools
 
-- Editor: Zed (vim mode, CLI `zeditor`); sometimes nvim (LazyVim).
+- Editor: Zed (vim mode, CLI `zed`); sometimes nvim (LazyVim).
 - Ghostty terminal · Chrome browser · Obsidian notes · Docker (colima VM) · Raycast (⌘Space).
 - Shell: zsh. Helpers live in `home/config/shell/` (e.g. `spf` = files).
 

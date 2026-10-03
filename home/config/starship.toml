@@ -59,8 +59,7 @@ format = '[$symbol$stack]($style) '
 # Terraform: presence only. $workspace is the default and is deliberately out —
 # workspaces go unused here, so it would render a constant "default" on every
 # .tf directory. $version is out too: it shells out to `terraform version`,
-# which is slow, and terraform comes from a devenv shell rather than the login
-# PATH, so it would usually resolve to nothing anyway.
+# which is slow on every prompt.
 [terraform]
 symbol = '󱁢 '
 format = '[$symbol]($style)'

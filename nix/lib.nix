@@ -1,14 +1,14 @@
-# Flake helpers: host builders + lint/format derivations. Kept out of flake.nix
-# so that file stays inputs + outputs wiring. Path arguments (hostModule,
-# homeModule, src, modules) are passed in from the flake root so their relative
-# references resolve there, not against this nix/ directory.
+# Flake helpers: home builders + lint/format derivations. Kept out of flake.nix
+# so that file stays inputs + outputs wiring. Path arguments (src, modules) are
+# passed in from the flake root so their relative references resolve there, not
+# against this nix/ directory.
 { inputs }:
 let
-  inherit (inputs) nixpkgs nix-darwin home-manager;
+  inherit (inputs) nixpkgs home-manager;
 
-  # Empty on purpose — the seam both builders wire up, so a package override is
-  # one entry here instead of a change to mkDarwin and mkHome. (Last occupant: a
-  # sqlfmt pname workaround, dropped once nixpkgs fixed it upstream.)
+  # Empty on purpose — the seam mkHome wires up, so a package override is one
+  # entry here. (Last occupant: a sqlfmt pname workaround, dropped once nixpkgs
+  # fixed it upstream.)
   overlays = [ ];
 
   # Both standalone entry points carry the pinned driver, even before the first
@@ -33,39 +33,8 @@ in
 {
   inherit mkHomeApp;
 
-  # macOS: full system (nix-darwin) + that user's home-manager.
-  mkDarwin =
-    {
-      system,
-      hostModule,
-      homeModule,
-      user,
-    }:
-    nix-darwin.lib.darwinSystem {
-      inherit system;
-      specialArgs = {
-        inherit inputs;
-        username = user;
-      };
-      modules = [
-        hostModule
-        { nixpkgs.overlays = overlays; }
-        home-manager.darwinModules.home-manager
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.extraSpecialArgs = {
-            inherit inputs;
-            username = user;
-          };
-          home-manager.users.${user} = import homeModule;
-          home-manager.backupFileExtension = "backup";
-        }
-      ];
-    };
-
-  # Standalone home-manager (non-NixOS Linux / WSL) — no system layer. allowUnfree
-  # mirrors the macOS side (hosts/mac); without it the build fails on _1password-cli.
+  # Standalone home-manager (non-NixOS Linux / WSL) — no system layer.
+  # allowUnfree: without it the build fails on _1password-cli.
   mkHome =
     {
       system,
@@ -103,13 +72,13 @@ in
         cd ${src}
         deadnix --fail .
         statix check .
-        shellcheck bootstrap.sh apply.sh
+        shellcheck bootstrap.sh apply.sh install.sh macos.sh home/bin/wallpaper-shuffle
         touch "$out"
       '';
 
   # Exercise the real scripts with disposable Git repos and fake rebuilds.
-  # Build the same home-app wrappers natively so macOS can test first-run CLI
-  # wiring too, without needing a Linux builder or activating a real profile.
+  # Build the same home-app wrappers natively, so first-run CLI wiring is tested
+  # without activating a real profile.
   workflowsFor =
     { system, src }:
     let

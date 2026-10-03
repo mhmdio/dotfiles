@@ -78,9 +78,12 @@ lip() {
 
 # Unknown command → suggest the one-off runner rather than installing anything.
 # `,` resolves the package from the same nix-index database (see home/shared.nix).
-command_not_found_handler() {
-  print -ru2 -- "$1: not installed — run it once with:  , $*"
-  return 127
-}
+# Linux (home-manager) only; macOS keeps zsh's plain "command not found".
+if (( ${+commands[,]} )); then
+  command_not_found_handler() {
+    print -ru2 -- "$1: not installed — run it once with:  , $*"
+    return 127
+  }
+fi
 
 # AI coding tools — `cc`/`oc`/`cx` and `ai-update` — live in ~/.config/shell/ai.zsh

@@ -1,0 +1,4 @@
+# ~/.zprofile on macOS (symlinked by install.sh). Login shells run /etc/zprofile's
+# path_helper after ~/.zshenv, which puts /usr/bin back ahead of Homebrew —
+# re-assert the order.
+source "$HOME/.config/shell/path.zsh"

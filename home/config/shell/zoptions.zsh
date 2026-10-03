@@ -40,8 +40,8 @@ bindkey "^[[C" forward-char
 bindkey "^[[D" backward-char
 
 # No CHASE_LINKS: it resolves symlinks on cd, and every ~/.config/* here is a
-# home-manager symlink — `cd ~/.config/ghostty` would land in a read-only
-# /nix/store/…-hm_ghostty (and show that path in the prompt).
+# symlink — `cd ~/.config/nvim/lua` would land in the dotfiles checkout (on
+# Linux, a read-only /nix/store/…-hm_* path) and show that in the prompt.
 
 # Do not autocomplete hidden files unless explicitly starting with dot
 zstyle ':completion:*' match-hidden-files off

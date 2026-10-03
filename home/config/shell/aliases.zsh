@@ -32,8 +32,9 @@ alias ....='cd ../../..'
 alias top='btop'
 alias d='docker'
 alias lg='lazygit'
-alias lwt='lazyworktree'     # git worktree manager TUI
-# GitHub PR/issue dashboard TUI (gh extension, via programs.gh). Not an alias
+(( ${+commands[lazyworktree]} )) && alias lwt='lazyworktree'  # worktree TUI (Linux; not on Homebrew)
+# GitHub PR/issue dashboard TUI (gh extension: install.sh on the Mac, programs.gh
+# on Linux). Not an alias
 # because gh-dash can't switch flavour by itself: a configured colour is one
 # value for BOTH appearances, so the flavour is chosen here, per launch. Why it
 # can't follow the terminal palette instead: home/dotfiles/core.nix.
@@ -45,9 +46,9 @@ ghd() {
   gh dash --config "${XDG_CONFIG_HOME:-$HOME/.config}/gh-dash/config-$flavour.yml" "$@"
 }
 alias lzd='lazydocker'
-alias hn='hackernews_tui'    # Hacker News reader TUI (binary is underscored)
+(( ${+commands[hackernews_tui]} )) && alias hn='hackernews_tui'  # HN reader TUI (Linux; not on Homebrew)
 alias v='nvim'
-alias zed='zeditor'          # nixpkgs zed-editor ships its CLI as `zeditor`
+(( ${+commands[zeditor]} )) && alias zed='zeditor'  # nixpkgs (Linux) names Zed's CLI `zeditor`; the macOS cask ships `zed`
 n() { if [[ $# -eq 0 ]]; then nvim .; else nvim "$@"; fi; }
 # AI CLIs live in ~/.config/shell/ai.zsh: `cc`/`oc`/`cx` run claude/opencode/codex
 # here with permissions bypassed; `ai-update` upgrades all three.

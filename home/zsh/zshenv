@@ -1,0 +1,4 @@
+# ~/.zshenv on macOS (symlinked by install.sh) — read by EVERY zsh, scripts and
+# editor tasks included, so it only sets environment. Linux gets home-manager's.
+export DIRENV_LOG_FORMAT="" # quiet direnv's per-load status lines
+source "$HOME/.config/shell/path.zsh"

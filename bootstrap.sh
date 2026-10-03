@@ -4,25 +4,25 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/mhmdio/dotfiles/main/bootstrap.sh | bash
 #
-# macOS  → Xcode CLT → Lix → Homebrew → nix-darwin + home-manager → switch
+# macOS  → Xcode CLT → Homebrew → clone → install.sh (Brewfile + links) → macos.sh
 # Linux  → Lix → standalone home-manager → switch  (non-NixOS; no system layer)
 #
-# Idempotent: re-running refreshes the clone and re-applies. The account to
-# build for is auto-stamped from $DOTFILES_USER (defaults to $USER).
+# Idempotent: re-running refreshes the clone and re-applies. On Linux the account
+# to build for is auto-stamped from $DOTFILES_USER (defaults to $USER).
 # ============================================================================
 set -euo pipefail
 
 REPO_URL="${DOTFILES_REPO_URL:-https://github.com/mhmdio/dotfiles}"
-# Must match `repo` in home/dotfiles/workstation.nix — that module points
-# ~/.config/nvim/lazy-lock.json at a file INSIDE this checkout, so a mismatch
-# leaves nvim with a dangling lockfile symlink it cannot read or update. The
-# check after the clone catches drift if only one of the two ever moves.
+# On Linux this must match `repo` in home/dotfiles/workstation.nix — that module
+# points ~/.config/nvim/lazy-lock.json at a file INSIDE this checkout, so a
+# mismatch leaves nvim with a dangling lockfile symlink it cannot read or update.
+# The check after the clone catches drift. (The Mac's install.sh links from
+# wherever the checkout is, so any path works there.)
 REPO_DIR="${DOTFILES_DIR:-$HOME/Developer/dotfiles}"
 DOTFILES_USER="${DOTFILES_USER:-${USER:-$(id -un)}}"
-# Bootstrap DRIVER frontends that run the first switch — pinned to a stable release
-# for a dependable first run. The flake's own inputs (nixpkgs/nix-darwin/home-manager
+# Bootstrap DRIVER frontend that runs the first Linux switch — pinned to a stable
+# release for a dependable first run. The flake's own inputs (nixpkgs/home-manager
 # on master) build the actual config, so this 25.11-vs-unstable skew is intentional.
-DARWIN_REF="github:nix-darwin/nix-darwin/nix-darwin-25.11"
 HM_REF="github:nix-community/home-manager/release-25.11"
 
 # Quieten one-time bootstrap eval noise: enable flakes, allow `or` as an
@@ -59,44 +59,30 @@ if [ "$OS" = "Darwin" ] && ! xcode-select -p >/dev/null 2>&1; then
   exit 1
 fi
 
-# --- Layer 0: Lix (Nix interpreter + daemon) --------------------------------
-step "Nix (Lix)"
-if ! command -v nix >/dev/null 2>&1; then
-  info "installing Lix…"
-  curl --proto '=https' --tlsv1.2 -sSf -L https://install.lix.systems/lix | sh -s -- install
-  ok "Lix installed"
-else
-  ok "already installed"
-fi
-# Lix's nix-daemon.sh reads $ZSH_VERSION unguarded, so relax nounset while sourcing.
-if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-  set +u
-  # runtime path, absent at lint time
-  # shellcheck disable=SC1091
-  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-  set -u
-fi
-
-# --- Trusted Nix user (devenv requires it) ----------------------------------
-# devenv passes restricted settings (system, http-connections, …) when it builds
-# a shell; a non-trusted user gets them rejected and the shell fails to evaluate.
-# Lix trusts only root by default, so enrol the build account (root already is).
-if [ "$DOTFILES_USER" != root ] \
-  && ! nix config show trusted-users 2>/dev/null | tr ' ' '\n' | grep -qx "$DOTFILES_USER"; then
-  step "Nix trusted-user"
-  info "adding $DOTFILES_USER to trusted-users (sudo) so devenv shells evaluate…"
-  echo "extra-trusted-users = $DOTFILES_USER" | sudo tee -a /etc/nix/nix.conf >/dev/null
-  if [ "$OS" = "Darwin" ]; then
-    sudo launchctl kickstart -k system/org.nixos.nix-daemon
+# --- Layer 0 (Linux only): Lix (Nix interpreter + daemon) -------------------
+# The Mac has no Nix at all — Homebrew owns it (below).
+if [ "$OS" != "Darwin" ]; then
+  step "Nix (Lix)"
+  if ! command -v nix >/dev/null 2>&1; then
+    info "installing Lix…"
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.lix.systems/lix | sh -s -- install
+    ok "Lix installed"
   else
-    sudo systemctl restart nix-daemon 2>/dev/null || true
+    ok "already installed"
   fi
-  ok "trusted-users → root $DOTFILES_USER"
+  # Lix's nix-daemon.sh reads $ZSH_VERSION unguarded, so relax nounset while sourcing.
+  if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+    set +u
+    # runtime path, absent at lint time
+    # shellcheck disable=SC1091
+    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+    set -u
+  fi
 fi
 
-# --- Layer 1a (macOS only): Homebrew (GUI casks; nix-darwin drives bundle) ---
+# --- Layer 0 (macOS only): Homebrew — every package on the Mac -------------
 if [ "$OS" = "Darwin" ]; then
-  step "Homebrew (GUI casks)"
+  step "Homebrew"
   if [ ! -x /opt/homebrew/bin/brew ] && ! command -v brew >/dev/null 2>&1; then
     info "installing Homebrew…"
     NONINTERACTIVE=1 /bin/bash -c \
@@ -134,34 +120,34 @@ else
   git -C "$REPO_DIR" reset --hard --quiet origin/main
   ok "refreshed $REPO_DIR to origin"
 fi
-# Both sides name the checkout independently (this script has to know it before
-# there is a repo to read it from), so verify they agree rather than silently
-# shipping a broken lockfile symlink.
-expected="$(sed -n 's|.*repo = .*homeDirectory}/\(.*\)";|\1|p' \
-  "$REPO_DIR/home/dotfiles/workstation.nix" 2>/dev/null || true)"
-if [ -n "$expected" ] && [ "$REPO_DIR" != "$HOME/$expected" ]; then
-  warn "checkout is $REPO_DIR but home/dotfiles/workstation.nix expects \$HOME/$expected"
-  warn "nvim's lazy-lock.json symlink will dangle — make the two match"
-fi
-
 cd "$REPO_DIR"
 
-# Stamp the account to build for; the flake reads ./username.nix (pure eval).
-{ echo '# Auto-stamped by bootstrap.sh — the account this machine builds for.'
-  printf '"%s"\n' "$DOTFILES_USER"; } > username.nix
-git add username.nix
-ok "building for account: ${B}${DOTFILES_USER}${R}"
+if [ "$OS" != "Darwin" ]; then
+  # Both sides name the checkout independently (this script has to know it
+  # before there is a repo to read it from), so verify they agree rather than
+  # silently shipping a broken lockfile symlink.
+  expected="$(sed -n 's|.*repo = .*homeDirectory}/\(.*\)";|\1|p' \
+    home/dotfiles/workstation.nix 2>/dev/null || true)"
+  if [ -n "$expected" ] && [ "$REPO_DIR" != "$HOME/$expected" ]; then
+    warn "checkout is $REPO_DIR but home/dotfiles/workstation.nix expects \$HOME/$expected"
+    warn "nvim's lazy-lock.json symlink will dangle — make the two match"
+  fi
+
+  # Stamp the account to build for; the flake reads ./username.nix (pure eval).
+  { echo '# Auto-stamped by bootstrap.sh — the account this machine builds for.'
+    printf '"%s"\n' "$DOTFILES_USER"; } > username.nix
+  git add username.nix
+  ok "building for account: ${B}${DOTFILES_USER}${R}"
+fi
 
 # --- Activate ----------------------------------------------------------------
 step "Activate"
 if [ "$OS" = "Darwin" ]; then
-  info "nix-darwin + home-manager (.#mac) — first run downloads a lot, be patient"
-  # sudo -H → HOME=/var/root (no '$HOME not owned' warning); NIX_* exported
-  # inside the elevated shell so they also reach darwin-rebuild's inner eval.
-  sudo -H sh -c "$NIX_ENV"'
-    exec nix run "$1#darwin-rebuild" -- switch --flake "$2#mac"
-  ' sh "$DARWIN_REF" "$REPO_DIR"
-  ok "system activated"
+  info "Brewfile + config links (install.sh) — first run downloads a lot, be patient"
+  ./install.sh
+  info "macOS defaults (macos.sh)"
+  ./macos.sh
+  ok "Mac configured"
 else
   HM_TARGET="$DOTFILES_USER"
   case "$(uname -m)" in aarch64 | arm64) HM_TARGET="${DOTFILES_USER}-aarch64" ;; esac
@@ -177,7 +163,7 @@ if [ "$OS" = "Darwin" ]; then
   info "opening Ghostty — your themed terminal with the right fonts…"
   open -a Ghostty 2>/dev/null \
     || warn "open Ghostty yourself for the Nerd-Font icons"
-  info "apply future changes with: ${B}nix run .#mac${R}"
+  info "configs are live symlinks into the repo; after Brewfile edits run: ${B}./install.sh${R}"
 else
   info "open a new shell; apply future changes with: ${B}nix run .#linux${R}"
 fi

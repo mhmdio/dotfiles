@@ -1,0 +1,13 @@
+# ~/.zshrc on macOS (symlinked by install.sh). Linux gets the home-manager
+# equivalent (home/shared.nix → programs.zsh); both source the same shell tree.
+
+HISTFILE="$HOME/.local/state/zsh/history"
+HISTSIZE=100000
+SAVEHIST=100000
+[[ -d ${HISTFILE:h} ]] || mkdir -p "${HISTFILE:h}"
+setopt HIST_FCNTL_LOCK HIST_IGNORE_DUPS HIST_IGNORE_SPACE SHARE_HISTORY
+
+source "$HOME/.config/shell/all.zsh"
+[[ $- == *i* ]] && source "$HOME/.config/shell/zoptions.zsh"
+
+(( ${+commands[direnv]} )) && eval "$(direnv hook zsh)"

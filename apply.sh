@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
 # ============================================================================
-# dotfiles apply — pretty wrapper around the rebuild step. Invoked by the flake
-# apps (`nix run .#mac` / `.#linux`), or run directly from your checkout:
+# dotfiles apply (Linux) — pretty wrapper around the home-manager switch.
+# Invoked by the flake apps (`nix run .#linux` / `.#server`), or run directly
+# from your checkout. The Mac has no Nix: it uses ./install.sh instead.
 #
-#   nix run .#mac       # sudo darwin-rebuild switch --flake .#mac
 #   nix run .#linux     # home-manager switch --flake .#<user> -b backup
 #   nix run .#server    # …headless profile, .#<serverUser>-server
-#   ./apply.sh mac      # …the same, invoked directly
+#   ./apply.sh linux    # …the same, invoked directly
 #
 # Pure-bash framing (header / steps / result); nix-output-monitor (nom) renders
 # the live build tree. Build logs stay on screen, so a failed switch is still
 # debuggable — no full-screen takeover. Falls back to nix's own progress bar
 # when nom isn't on PATH yet (e.g. the very first apply, before it's installed).
 #
-# Kept bash 3.2-compatible (macOS system bash): no `|&`, no assoc arrays.
 # ============================================================================
 set -uo pipefail
 
@@ -36,24 +35,18 @@ die()    { printf '\n  %s✗ %s%s\n' "$RED" "$1" "$R" >&2; exit "${2:-1}"; }
 
 # Run a rebuild command with live progress. nom if present (pretty build tree),
 # else nix's built-in multiline bar. Returns the REBUILD's status, not nom's.
-# $1 = verbose|quiet — darwin-rebuild forwards -v to nix, but home-manager's arg
-# parser whitelists flags and doesn't pass -v, so use quiet there.
+# No -v: home-manager's arg parser whitelists flags and doesn't pass it to nix.
 run_with_progress() {
-  local verbosity="$1"; shift
   if command -v nom >/dev/null 2>&1; then
-    if [ "$verbosity" = verbose ]; then
-      "$@" --log-format internal-json -v 2>&1 | nom --json
-    else
-      "$@" --log-format internal-json 2>&1 | nom --json
-    fi
+    "$@" --log-format internal-json 2>&1 | nom --json
     return "${PIPESTATUS[0]}"
   fi
   warn "nom not on PATH yet — using nix's built-in progress (it'll install this run)"
   "$@" --log-format multiline
 }
 
-# Runs against the flake in the current directory — both `nix run .#mac` and a
-# direct `./apply.sh mac` invoke us from your dotfiles checkout.
+# Runs against the flake in the current directory — both `nix run .#linux` and a
+# direct `./apply.sh linux` invoke us from your dotfiles checkout.
 [ -f flake.nix ] || die "run from your dotfiles checkout (no flake.nix in $PWD)"
 banner
 
@@ -66,30 +59,7 @@ fi
 
 case "$PLATFORM" in
   mac)
-    step "apply  .#mac   ·   sudo darwin-rebuild switch"
-    # A NOPASSWD rule for darwin-rebuild (hosts/mac.nix) makes the priming
-    # pointless AND counterproductive: `sudo -v` validates for every command, so
-    # it would prompt even though the one command we run needs no password.
-    # `sudo -n -l <cmd>` asks "is this allowed without a prompt?" without running it.
-    if sudo -n -l darwin-rebuild >/dev/null 2>&1; then
-      info "darwin-rebuild is passwordless here — no sudo prompt"
-    else
-      info "caching sudo credentials up front (one prompt)…"
-      sudo -v || die "sudo authentication failed"
-    fi
-    before="$(readlink -f /run/current-system 2>/dev/null || true)"
-    run_with_progress verbose sudo darwin-rebuild switch --flake ".#mac" \
-      || die "switch failed — see the build log above" "$?"
-    rule
-    ok "activated  ${B}.#mac${R}"
-    # What changed this switch (package adds/removes/version bumps).
-    if command -v nvd >/dev/null 2>&1 && [ -n "$before" ]; then
-      after="$(readlink -f /run/current-system 2>/dev/null || true)"
-      if [ -n "$after" ] && [ "$before" != "$after" ]; then
-        step "changes"
-        nvd diff "$before" "$after" || true
-      fi
-    fi
+    die "the Mac no longer uses Nix — run ./install.sh (Homebrew + config links)"
     ;;
   linux)
     # Match the account the flake builds for (bootstrap stamps username.nix), so
@@ -100,7 +70,7 @@ case "$PLATFORM" in
     # aarch64 boxes build the -aarch64 home config (see flake homeConfigurations).
     case "$(uname -m)" in aarch64 | arm64) TARGET="${TARGET}-aarch64" ;; esac
     step "apply  .#${TARGET}   ·   home-manager switch"
-    run_with_progress quiet home-manager switch --flake ".#${TARGET}" -b backup \
+    run_with_progress home-manager switch --flake ".#${TARGET}" -b backup \
       || die "switch failed — see the build log above" "$?"
     rule
     ok "activated  ${B}.#${TARGET}${R}"
@@ -114,12 +84,12 @@ case "$PLATFORM" in
     TARGET="${TARGET}-server"
     case "$(uname -m)" in aarch64 | arm64) TARGET="${TARGET}-aarch64" ;; esac
     step "apply  .#${TARGET}   ·   home-manager switch"
-    run_with_progress quiet home-manager switch --flake ".#${TARGET}" -b backup \
+    run_with_progress home-manager switch --flake ".#${TARGET}" -b backup \
       || die "switch failed — see the build log above" "$?"
     rule
     ok "activated  ${B}.#${TARGET}${R}"
     ;;
   *)
-    die "usage: ./apply.sh <mac|linux|server>"
+    die "usage: ./apply.sh <linux|server>"
     ;;
 esac

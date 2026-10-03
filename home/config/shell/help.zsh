@@ -29,8 +29,8 @@ help() {
       "$tool" "$name" "$rst" "$arrow" "$replaces" "$rst" "$ex" "$example" "$rst"
   done <<'DATA'
 files & nav|eza|eza|ls|eza -l --icons --git
-files & nav|bat|bat|cat / less|bat flake.nix
-files & nav|fd|fd|find|fd ".nix$"
+files & nav|bat|bat|cat / less|bat README.md
+files & nav|fd|fd|find|fd ".zsh$"
 files & nav|z|zoxide|cd|z dotfiles
 files & nav|spf|spf|Finder / ranger|spf
 files & nav|dust|dust|du|dust ~/Downloads

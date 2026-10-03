@@ -1,5 +1,5 @@
 # vhs tape — a short showcase of the themed environment.
-# Regenerate with `nix run .#demo` (no install needed; runs vhs via nix).
+# Regenerate with `make demo` (needs vhs: `brew install vhs`).
 # Output (.github/demo.gif) is committed so the README Demo renders on GitHub.
 #
 # Docs: https://github.com/charmbracelet/vhs
